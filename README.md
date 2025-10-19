@@ -1,13 +1,5 @@
-# Education-Data-Sharing-Platform
+# 🎓 Education-Data-Sharing-Platform
 Enables secure, role-based data sharing between universities, including student verification, course information, thesis access, and payment services.  Built with Flask + MongoDB, featuring a modular design for private/public data providers and consumers.
-
-# 🎓 Education Data Bay Area (E-DBA)
-
-A lightweight educational data-sharing platform inspired by the International Data Space (IDS) architecture.
-
-> Designed and implemented as part of *Software Engineering* and *Advanced Software Development Workshop* courses at UIC.
-
----
 
 ## 🚀 Features
 
@@ -39,7 +31,4 @@ A lightweight educational data-sharing platform inspired by the International Da
 | Authentication | Flask-Login / Mock Email OTP |
 | File Handling | `send_from_directory` (for policy PDFs) |
 
----
-
-## 🗂 Directory Structure
 
