@@ -1,0 +1,28 @@
+{% extends 'basic.html' %}
+
+{% block title %}Dashboard - E-DBA{% endblock %}
+
+{% block content %}
+<h2>Welcome，{{ user.email }}!</h2>
+
+{% if user.role == 'convener' %}
+<p>You are an O-Convener</p>
+<a href="#">Manage organization</a>
+{% elif user.role == 't-admin' %}
+<p>You are a T-Admin</p>
+<a href="#">Handle help request</a>
+{% elif user.role == 'consumer' %}
+<p>You are a data consumer</p>
+<a href="#">View theses</a>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const userEmail = "{{ user.email }}";
+  if (userEmail) {
+    localStorage.setItem("user_email", userEmail);
+  }
+</script>
+
+{% endblock %}

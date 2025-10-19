@@ -1,0 +1,133 @@
+body { font-family: sans-serif; padding: 15px; margin: 0; background-color: #f8f9fa; }
+.dashboard-container { max-width: 1200px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+h1, h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+nav { background-color: #343a40; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; }
+nav a { color: white; margin-right: 15px; text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9em; }
+th, td { border: 1px solid #ddd; padding: 10px; text-align: left; word-wrap: break-word; }
+th { background-color: #f2f2f2; }
+        
+        /* General Button Styling - Default to a neutral or primary if not specified */
+.action-buttons button, .form-group button, .filter-form button, .btn { 
+            margin: 3px; 
+            padding: 6px 12px; /* Slightly more padding for better look */
+            cursor: pointer; 
+            border-radius: 4px; 
+            border: 1px solid transparent; /* Transparent border for consistency */
+            font-size: 0.9em; /* Consistent font size */
+            text-decoration: none;
+            display: inline-block;
+            line-height: 1.5;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .action-buttons button:hover, .form-group button:hover, .filter-form button:hover, .btn:hover { 
+            opacity: 0.85; /* Common hover effect */
+        }
+
+        /* Primary Button Style (Blue) */
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        /* Edit Button Style (Yellow) */
+        .edit-btn {
+            background-color: #ffc107;
+            color: #212529; /* Darker text for yellow background */
+            border-color: #ffc107;
+        }
+        .edit-btn:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+        }
+        
+        /* Delete Button Style (Red) */
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        /* Secondary/Cancel Button Style (Grey) */
+        .btn-secondary, .modal-btn-cancel {
+            background-color: #6c757d;
+            color: white;
+            border-color: #6c757d;
+        }
+        .btn-secondary:hover, .modal-btn-cancel:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        /* Specific application of primary for other buttons */
+        .approve-btn { /* Was green, now uses primary */
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+         .approve-btn:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .form-group button, .filter-form button { /* Default form buttons */
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .form-group button:hover, .filter-form button:hover {
+             background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+
+        textarea { width: calc(100% - 16px); min-height: 60px; margin-top: 5px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;}
+        .form-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #fdfdfd; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input[type="email"], .form-group input[type="text"]  { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; box-sizing: border-box;}
+        .filter-form { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .filter-form select { padding: 8px; border-radius: 4px; border: 1px solid #ccc;} /* Removed button styling, will use .btn-primary */
+        
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;}
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+        .alert-info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;}
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); position: relative; }
+        .modal-header { padding-bottom: 10px; border-bottom: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { margin: 0; color: #333; font-size: 1.5em; }
+        .close-btn { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover, .close-btn:focus { color: black; text-decoration: none; }
+        .modal-form-group { margin-bottom: 15px; }
+        .modal-form-group label { display: block; margin-bottom: 6px; font-weight: bold; color: #555; }
+        .modal-form-group input[type="email"], .modal-form-group input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; }
+        .modal-button-group { margin-top: 20px; text-align: right; }
+        .modal-button-group button { /* General modal button styling */
+            padding: 10px 18px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1em;
+            margin-left: 10px;
+            border: 1px solid transparent;
+        }
+        .modal-btn-save { /* Blue */
+            background-color: #007bff; 
+            color: white; 
+            border-color: #007bff;
+        }
+        .modal-btn-save:hover { background-color: #0056b3; }
+        /* .modal-btn-cancel is already styled by .btn-secondary */
+
+        .current-info-modal { font-size: 0.85em; color: #777; margin-top: 3px; }

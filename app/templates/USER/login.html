@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Login - E-DBA</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 400px; /* Consistent width */
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="email"],
+        input[type="text"] {
+            width: calc(100% - 22px); /* Full width minus padding/border */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 3px;
+            box-sizing: border-box;
+        }
+        
+        .input-group { /* For Code input and Send Code button */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-group input[type="text"] { /* Code input */
+            flex-grow: 1;
+        }
+        .input-group .btn-send-code { /* Send Code button specific styles when in an input group */
+            white-space: nowrap;
+            flex-shrink: 0;
+            padding: 10px 12px; /* This padding applies specifically when .btn-send-code is in .input-group */
+        }
+
+        /* General Button Styling to match image_bbc112.png */
+        button,
+        .btn-like-custom {
+            padding: 8px 15px;
+            border: 1px solid #ababab;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            background-color: #f0f0f0;
+            color: #333;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin: 0 5px;
+        }
+        button:hover,
+        .btn-like-custom:hover {
+            background-color: #e0e0e0;
+            border-color: #999999;
+        }
+        
+        .btn-send-code {
+            /* General button styles explicitly defined for this class: */
+            padding: 8px 15px;          /* Default padding from general button style */
+            border: 1px solid #ababab;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            background-color: #f0f0f0;
+            color: #333;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin: 0 5px;
+        }
+
+        /* Styles for the main Login button group */
+        .action-button-group {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center; /* Center the button */
+            gap: 15px;
+        }
+        .action-button-group .btn-login {
+            size: 100%;
+            background: #007bff; /* This style seems to be missing color, assuming white text for contrast */
+            color: #fff; /* Added for better visibility on blue background */
+        }
+        
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;}
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+        .alert-info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;}
+        .text-center { text-align: center; margin-top: 20px; font-size: 0.9em;}
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>User Login E-DBA</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category_full, message in messages %}
+                    {# Extract base category for alert styling (e.g., 'danger' from 'login_danger') #}
+                    {% set category = category_full.split('_')[0] if '_' in category_full else category_full %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {# Main form handles both sending code and final login via different submit actions #}
+        <form action="{{ url_for('user.login_submit') }}" method="POST" id="mainLoginForm">
+            
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                {# This email field is used for both sending code and final login #}
+                <input type="email" id="email" name="email" required placeholder="Enter your email" value="{{ form_data.email if form_data else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="code">Verification Code:</label>
+                <div class="input-group">
+                    <input type="text" id="code" name="code" placeholder="Enter received code" value="{{ form_data.code if form_data else '' }}" required>
+                    <button type="submit"
+                            formaction="{{ url_for('user.login_send_code') }}"
+                            formmethod="POST"
+                            name="send_code_button"
+                            value="true"
+                            class="btn-send-code"
+                            formnovalidate>Send code</button>
+                </div>
+            </div>
+
+            <div class="action-button-group">
+                <button type="submit" class="btn-login">Login</button>
+                {# Removed the explicit form="mainLoginForm" as it's the default submit for its own form #}
+            </div>
+        </form>
+
+        <div class="text-center">
+            Don't have an account yet? <a href="{{ url_for('user.apply_for_admin_role_page') }}">Register now</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Student Identity Verification</h2>
+        </div>
+        <div class="card-body">
+            <form id="verificationForm">
+                <div class="mb-3">
+                    <label for="studentId" class="form-label">Student ID</label>
+                    <input type="text" class="form-control" id="studentId" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="university" class="form-label">University</label>
+                    <input type="text" class="form-control" id="university" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="idCard" class="form-label">Student ID Card</label>
+                    <input type="file" class="form-control" id="idCard" accept="image/*" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="enrollmentProof" class="form-label">Enrollment Proof</label>
+                    <input type="file" class="form-control" id="enrollmentProof" accept=".pdf,.jpg,.jpeg,.png" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Submit Verification</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Verification Fee: $<span id="verificationFee">10.00</span></p>
+                <form id="paymentForm">
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="transfer">Bank Transfer</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="wechat">WeChat Pay</option>
+                            <option value="alipay">Alipay</option>
+                            <option value="credit_card">Credit Card</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPayment">Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('verificationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Show payment modal
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    paymentModal.show();
+});
+
+document.getElementById('confirmPayment').addEventListener('click', function() {
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const formData = new FormData();
+    formData.append('student_id', document.getElementById('studentId').value);
+    formData.append('university', document.getElementById('university').value);
+    formData.append('id_card', document.getElementById('idCard').files[0]);
+    formData.append('enrollment_proof', document.getElementById('enrollmentProof').files[0]);
+    
+    // First create payment
+    fetch('/payment/payments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            service_type: 'student_identity',
+            amount: parseFloat(document.getElementById('verificationFee').textContent),
+            payment_method: paymentMethod,
+            description: 'Student identity verification fee'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            // After successful payment, submit verification request
+            formData.append('payment_id', data.payment_id);
+            return fetch('/student/verify-identity', {
+                method: 'POST',
+                body: formData
+            });
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert('Verification request submitted successfully');
+            window.location.href = '/student/dashboard';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to process verification request');
+    });
+});
+</script>
+{% endblock %} 

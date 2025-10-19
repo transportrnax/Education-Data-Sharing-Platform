@@ -1,0 +1,314 @@
+{% extends "basic.html" %}
+{% block title %}Provider Dashboard{% endblock %}
+
+{% block content %}
+<h1>📘 Provider Dashboard</h1>
+
+<h2>📥 Incoming Notifications</h2>
+<div id="notification-list"><p>Loading notifications...</p></div>
+
+<style>
+  body { font-family: Arial, sans-serif; }
+  input, textarea { width: 100%; margin-bottom: 0.75em; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;}
+  button {
+    background-color: #3949ab; color: white; border: none;
+    padding: 0.6em 1em; border-radius: 4px; cursor: pointer;
+    margin-right: 0.4em;
+  }
+  button:hover { background-color: #303f9f; }
+  .card { background: #f5f5f5; padding: 1em; border-radius: 8px; margin-bottom: 1.5em; border: 1px solid #ddd;}
+  .card.unread-notification { background: #fffde7; border-left: 5px solid #ffc107; }
+  .card.read-notification { background: #e9ecef; }
+  .card-actions { margin-top: 0.5em; }
+  .card-actions button { font-size: 0.8em; padding: 0.4em 0.8em;}
+</style>
+
+<!-- 📚 Add/Edit Course -->
+<h2>📚 Manage Courses</h2>
+<form id="course-form">
+  <input type="hidden" name="_id" id="course_id" />
+  <input type="text" name="title" placeholder="Course title" required />
+  <input type="text" name="units" placeholder="Units" required />
+  <textarea name="description" placeholder="Course description" required></textarea>
+  <button type="submit">Save Course</button>
+</form>
+<div id="course-list"></div>
+
+<!-- 🔧 Configure External Services -->
+<h2>🔧 Configure Services</h2>
+<form id="service-form">
+  <input type="text" name="service_name" placeholder="Service name" required />
+  <input type="text" name="base_url" placeholder="Base URL (e.g., http://...)" required />
+  <input type="text" name="path" placeholder="Path (e.g., /api/endpoint)" required />
+  <input type="text" name="method" placeholder="Method (GET/POST)" required />
+  <textarea name="input" placeholder="Input JSON schema" required></textarea>
+  <textarea name="output" placeholder="Output JSON schema (optional)"></textarea>
+  <button type="submit">Configure Service</button>
+</form>
+<div id="service-list"></div>
+
+<!-- 🧪 Test Result Modal -->
+<div id="test-result" style="white-space:pre-wrap; background:#e0e0e0; padding:1em; border-radius:8px; display:none; margin-top:1em;"></div>
+
+<script type="module">
+  const email = localStorage.getItem("user_email") || "alice_huang@uic.edu.cn"; // 用于测试，实际应确保登录用户
+  const notificationListDiv = document.getElementById("notification-list");
+  let courseListDiv = document.getElementById("course-list");
+  let serviceListDiv = document.getElementById("service-list");
+
+  fetch("/api/public/services/uic", {
+    headers: {
+      "X-User-Email": email
+    }
+  })
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const email = localStorage.getItem("user_email");
+    if (!email) {
+      alert("Not logged in!");
+      return;
+    }
+
+    // 显示用户信息
+    const username = email.split("@")[0].replace(/[_\.]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    const userDisplay = document.createElement("p");
+    userDisplay.innerHTML = `<b>👤 Logged in as:</b> ${username} (<i>${email}</i>)`;
+    document.querySelector("h1").after(userDisplay);
+
+    const container = document.getElementById("services-container");
+
+    try {
+      const res = await fetch("/api/consumer/services/available", {
+        headers: { "X-User-Email": email }
+      });
+      const services = await res.json();
+      if (!Array.isArray(services) || services.length === 0) {
+        container.innerHTML = "<p>No available services.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      services.forEach(service => renderServiceCard(container, service, email));
+    } catch (err) {
+      container.innerHTML = `<p style="color:red;">Failed to load services: ${err}</p>`;
+    }
+  });
+  
+  window.editCourse = function(course) {
+    const form = document.getElementById("course-form");
+    form.course_id.value = course._id;
+    form.title.value = course.title;
+    form.units.value = course.units;
+    form.description.value = course.description;
+  };
+
+  window.deleteCourse = async function(courseId) {
+    if (!confirm("Delete this course?")) return;
+    const res = await fetch(`/api/datauser/course/${courseId}`, {
+      method: "DELETE",
+      headers: { "X-User-Email": email }
+    });
+    const result = await res.json();
+    alert(result.message || result.error);
+    loadCourses();
+  };
+
+  window.deleteService = async function(serviceName) {
+    if (!confirm("Delete this service?")) return;
+    const res = await fetch(`/api/datauser/service/${serviceName}`, {
+      method: "DELETE",
+      headers: { "X-User-Email": email }
+    });
+    const result = await res.json();
+    alert(result.message || result.error);
+    loadServices();
+  };
+
+  window.testService = async function(serviceName) {
+    const testInput = prompt("Enter test input JSON (e.g., {\"name\":\"Alice\",\"id\":\"123\"})");
+    if (!testInput) return;
+    try {
+      const res = await fetch(`/api/datauser/service/test/${serviceName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": email
+        },
+        body: testInput
+      });
+      const result = await res.json();
+      document.getElementById("test-result").style.display = "block";
+      document.getElementById("test-result").textContent = JSON.stringify(result, null, 2);
+    } catch (err) {
+      alert("Test failed: " + err);
+    }
+  };
+
+  document.getElementById("course-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+
+    const title = form.title.value.trim();
+    const units = form.units.value.trim();
+    const description = form.description.value.trim();
+    const courseId = form.course_id.value.trim();
+
+    if (!title || !units || !description) {
+      alert("All fields are required.");
+      return;
+    }
+
+    const data = { title, units, description };
+
+    try {
+      const res = await fetch(courseId ? `/api/datauser/course/${courseId}` : "/api/datauser/course", {
+        method: courseId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": email
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await res.json();
+      alert(result.message || result.error);
+      form.reset();
+      document.getElementById("course_id").value = "";  // ✅ 清除编辑状态
+      loadCourses();
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Course submission failed.");
+    }
+  });
+
+
+
+  document.getElementById("service-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const raw = Object.fromEntries(formData.entries());
+    let payload;
+    try {
+      payload = {
+        service_name: raw.service_name,
+        base_url: raw.base_url,
+        path: raw.path,
+        method: raw.method,
+        input: JSON.parse(raw.input),
+        output: raw.output ? JSON.parse(raw.output) : {}
+      };
+    } catch (err) {
+      alert("Invalid JSON in input/output");
+      return;
+    }
+
+    const res = await fetch("/api/datauser/service", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Email": email
+      },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    alert(result.message || result.error);
+    e.target.reset();
+    loadServices();
+  });
+
+  async function loadCourses() {
+    const res = await fetch("/api/datauser/courses", {
+      headers: { "X-User-Email": email }
+    });
+    const courses = await res.json();
+    courseListDiv.innerHTML = courses.map(c => `
+      <div class="card">
+        <b>${c.title}</b> (${c.units})<br/>
+        ${c.description}
+        <div class="card-actions">
+          <button onclick='editCourse(${JSON.stringify(c)})'>Edit</button>
+          <button onclick='deleteCourse("${c._id}")'>Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadServices() {
+     try {
+    const res = await fetch("/api/datauser/services", {
+      headers: { "X-User-Email": email }
+    });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+    const services = await res.json();
+    serviceListDiv.innerHTML = services.map(s => `
+      <div class="card">
+        <b>${s.service_name}</b><br/>
+        ${s.config.base_url}${s.config.path}
+        <div class="card-actions">
+          <button onclick='testService("${s.service_name}")'>Test</button>
+          <button onclick='deleteService("${s.service_name}")'>Delete</button>
+        </div>
+      </div>
+        `).join('') || "<p>No services configured.</p>";
+    } catch (error) {
+        console.error("Failed to load services:", error);
+        serviceListDiv.innerHTML = "<p>Error loading services. Please try again later.</p>";
+    }
+  }
+
+
+  // --- Notification Functions ---
+  async function loadNotifications() {
+  notificationListDiv.innerHTML = "<p>Loading notifications...</p>";
+  try {
+    const response = await fetch("/api/datauser/notifications", {
+      headers: { "X-User-Email": email, "Accept": "application/json" }
+    });
+    if (!response.ok) {
+      notificationListDiv.innerHTML = "<p style='color:red;'>Failed to load notifications.</p>";
+      return;
+    }
+    const notes = await response.json();
+    if (!Array.isArray(notes) || notes.length === 0) {
+      notificationListDiv.innerHTML = "<p>No notifications.</p>";
+      return;
+    }
+    notificationListDiv.innerHTML = notes.map(n => `
+      <div class="card ${n.is_read ? 'read-notification' : 'unread-notification'}">
+        <b>${n.title || 'No Subject'}</b><br/>
+        ${n.message || 'No content'}<br/>
+        <small>Received: ${n.created_at ? new Date(n.created_at).toLocaleString() : 'N/A'}</small>
+        ${!n.is_read ? `<div class="card-actions">
+          <button onclick="markNotificationAsRead('${n._id}')">Mark as read</button>
+        </div>` : (n.read_at ? `<br/><small style="color:green;">Read: ${new Date(n.read_at).toLocaleString()}</small>` : '')}
+      </div>
+    `).join('');
+  } catch (err) {
+    notificationListDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+  }
+  }
+
+window.markNotificationAsRead = async function(id) {
+  try {
+    const response = await fetch(`/api/datauser/notifications/mark-read/${id}`, {
+      method: "POST",
+      headers: { "X-User-Email": email, "Content-Type": "application/json" }
+    });
+    const result = await response.json();
+    alert(result.message || "Notification status updated.");
+    loadNotifications();
+  } catch (err) {
+    alert("Failed to mark as read: " + err.message);
+  }
+};
+
+  // 初始加载
+  loadCourses();
+  loadServices();
+  loadNotifications();
+  
+
+</script>
+{% endblock %}

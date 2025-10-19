@@ -1,0 +1,26 @@
+{% extends 'basic.html' %}
+{% block content %}
+<h2>Thesis List</h2>
+<table>
+  {% for thesis in theses %}
+      {% if thesis.available == True %}
+  <tr>
+    <td>{{ thesis.title }}</td>
+    <td>{{ thesis.author }}</td>
+    <td><a href="{{ url_for('thesis.view_thesis', thesis_id=thesis._id) }}">Go</a></td>
+  </tr>
+      {% else %}
+  <!-- An unavailable thesis -->
+      {% endif %}
+  {% endfor %}
+</table>
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('thesis.list_theses', page=page - 1) }}">Previous Page</a>
+    {% endif %}
+    <span>Page {{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="{{ url_for('thesis.list_theses', page=page + 1) }}">Next Page</a>
+    {% endif %}
+</div>
+{% endblock %}

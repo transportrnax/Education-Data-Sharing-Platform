@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Admin Account - E-DBA</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; margin: 0; padding: 20px 0; }
+        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 480px; }
+        h2 { text-align: center; margin-bottom: 25px; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="email"], input[type="text"], select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-top: 3px;
+        }
+        .input-group { display: flex; gap: 10px; align-items: center; }
+        .input-group input[type="text"] { flex-grow: 1; }
+        .input-group button { width: auto; padding: 10px 15px; font-size: 14px; white-space: nowrap; }
+
+        button { padding: 12px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; background-color: #007bff; color: white; margin-top: 10px; }
+        button:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        .alert { padding: 10px 15px; margin-bottom: 20px; border-radius: 4px; font-size: 0.9em; border: 1px solid transparent; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb;}
+        .alert-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb;}
+        .alert-info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;}
+        .text-center { text-align: center; margin-top: 20px; font-size: 0.9em;}
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Create Administrator Account</h2>
+        <p style="text-align: center; font-size: 0.9em; color: #555; margin-bottom: 20px;">Direct account creation for TAdmins and O-Conveners.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category_full, message in messages %}
+                    {% set category = category_full if category_full == 'success' else (category_full.split('_')[0] if '_' in category_full else category_full) %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {# --- Form starts here --- #}
+        {# It posts to different URLs based on the button clicked via formaction #}
+        <form method="POST" id="directAdminCreationForm">
+
+            {# --- STEP 1: Display initial fields if no code entry is pending --- #}
+            {# This part is shown initially, it submits to admin_application_send_code #}
+            {% if not session.get('_direct_admin_creation_pending_verification') %}
+            <div class="form-group">
+                <label for="requested_role">I want to create an account for:</label>
+                <select id="requested_role" name="requested_role" required onchange="toggleOrgNameFieldForDirectRegister()">
+                    <option value="">-- Select Role --</option>
+                    {# ROLE_T_ADMIN and ROLE_O_CONVENER should be passed from the apply_for_admin_role_page route #}
+                    <option value="{{ ROLE_T_ADMIN }}" {% if form_data and form_data.requested_role == ROLE_T_ADMIN %}selected{% endif %}>Technical Administrator (T-Admin)</option>
+                    <option value="{{ ROLE_O_CONVENER }}" {% if form_data and form_data.requested_role == ROLE_O_CONVENER %}selected{% endif %}>Organization Convener (O-Convener)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Your Name/Username:</label>
+                <input type="text" id="username" name="username" placeholder="Enter your full name or a username"
+                       value="{{ form_data.username if form_data else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email address"
+                       value="{{ form_data.email if form_data else '' }}" required>
+            </div>
+
+            <div class="form-group" id="orgNameGroupDirectRegister" style="display:none;"> {# Initially hidden by JS #}
+                <label for="org_name">Proposed Organization Name (Required for O-Convener):</label>
+                <input type="text" id="org_name" name="org_name" placeholder="e.g., University XYZ Tech Club"
+                       value="{{ form_data.org_name if form_data else '' }}">
+            </div>
+
+            {# This button submits the data above to the 'send_code' route #}
+            <button type="submit" formaction="{{ url_for('user.admin_application_send_code') }}" formmethod="POST">
+                Proceed to Email Verification
+            </button>
+
+            {% else %}
+            {# --- STEP 2: Display code entry if code has been sent --- #}
+            {# This part is shown after send_code is successful, it submits to admin_application_submit_details #}
+                
+                {# Retrieve details stored in session by the 'send_code' step #}
+                {% set pending_details = session.get('_direct_admin_creation_pending_verification', {}) %}
+                
+                <div style="padding:15px; margin-bottom:20px; background-color:#f0f9ff; border:1px solid #cce5ff; border-radius:4px;">
+                    <p>Please check your email at <strong>{{ pending_details.email }}</strong> for a verification code.</p>
+                    <p><strong>Account Details:</strong></p>
+                    <ul>
+                        <li>Role: <strong>{{ pending_details.requested_role }}</strong></li>
+                        <li>Username: <strong>{{ pending_details.username }}</strong></li>
+                        {% if pending_details.requested_role == ROLE_O_CONVENER %}
+                        <li>Proposed Organization: <strong>{{ pending_details.org_name }}</strong></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label for="code">Verification Code:</label>
+                    <input type="text" id="code" name="code" placeholder="Enter 6-digit code" required autofocus>
+                </div>
+                
+                {# No proof document input here #}
+
+                {# This button submits the code (along with session data processed backend) to the 'submit_details' route #}
+                <button type="submit" formaction="{{ url_for('user.admin_application_submit_details') }}" formmethod="POST">
+                    Create Account
+                </button>
+                
+                {# Optional: Add a way to go back or reset if needed #}
+                <div style="margin-top:10px; text-align:center; font-size:0.9em;">
+                     <a href="{{ url_for('user.apply_for_admin_role_page') }}?reset=true">Start Over / Change Details</a> 
+                     {# The route needs to handle clearing session if ?reset=true #}
+                </div>
+            {% endif %}
+        </form>
+
+        <div class="text-center" style="margin-top: 20px;">
+            Already have an account? <a href="{{ url_for('user.login_page') }}">Login here</a><br><br>
+            <a href="{{ url_for('main.index') }}">Back to Homepage</a>
+        </div>
+    </div>
+
+    <script>
+        // Shows/hides the Organization Name field based on selected role
+        function toggleOrgNameFieldForDirectRegister() {
+            var roleSelect = document.getElementById('requested_role');
+            var orgNameGroup = document.getElementById('orgNameGroupDirectRegister');
+            var orgNameInput = document.getElementById('org_name');
+
+            if (roleSelect && orgNameGroup && orgNameInput) {
+                // ROLE_O_CONVENER should be the actual string value like "O-Convener" passed from Python
+                if (roleSelect.value === "{{ ROLE_O_CONVENER }}") { 
+                    orgNameGroup.style.display = 'block';
+                    orgNameInput.required = true; // Make required only when visible
+                } else {
+                    orgNameGroup.style.display = 'none';
+                    orgNameInput.required = false;
+                    orgNameInput.value = ''; // Clear value if not OConvener
+                }
+            }
+        }
+        
+        // Run on initial load for the role dropdown if it exists
+        document.addEventListener('DOMContentLoaded', function() {
+            var roleSelect = document.getElementById('requested_role');
+            if (roleSelect) { 
+                 toggleOrgNameFieldForDirectRegister();
+            }
+        });
+    </script>
+</body>
+</html>

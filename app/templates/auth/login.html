@@ -1,0 +1,103 @@
+{% extends 'basic.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<style>
+  form {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    font-family: Arial, sans-serif;
+  }
+  h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  label {
+    display: block;
+    margin: 1rem 0 0.5rem;
+    font-weight: bold;
+  }
+  input[type="email"],
+  input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  button {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    background-color: #3949ab;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #303f9f;
+  }
+  #message {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+</style>
+
+<form method="post" action="{{ url_for('auth.login') }}">
+  <h2>🔐 Login to Your Account</h2>
+  <label for="email">Email:</label>
+  <input type="email" name="email" id="email" required>
+
+  <button type="button" onclick="requestOTP()">📩 Get Verification Code</button>
+
+  <label for="otp">Verification Code:</label>
+  <input type="text" name="otp" id="otp" required maxlength="6" minlength="6">
+
+  <button type="submit">🔓 Login</button>
+  <p id="message"></p>
+</form>
+
+<script>
+function requestOTP() {
+  const email = document.getElementById('email').value;
+  const messageElem = document.getElementById('message');
+
+  if (!email) {
+    messageElem.textContent = '⚠️ Please enter your email';
+    messageElem.style.color = 'red';
+    return;
+  }
+
+  fetch('{{ url_for("auth.api_request_otp") }}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token() if csrf_token }}'
+    },
+    body: JSON.stringify({ email: email })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      messageElem.style.color = 'green';
+      messageElem.textContent = '✅ Verification code sent. Please check your email.';
+    } else {
+      messageElem.style.color = 'red';
+      messageElem.textContent = data.message || '❌ Failed to send verification code.';
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    messageElem.style.color = 'red';
+    messageElem.textContent = '🚫 An error occurred. Please try again later.';
+  });
+}
+localStorage.setItem("user_email", "{{ current_user.email }}");
+</script>
+{% endblock %}

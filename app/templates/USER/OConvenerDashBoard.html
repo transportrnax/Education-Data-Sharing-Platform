@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>O-Convener Dashboard - {% if organization_data and organization_data.name %}{{ organization_data.name }}{% elif oconvener_user and oconvener_user.organization_name %}{{ oconvener_user.organization_name }} {% if view_status != 'approved_active' %}(Pending Setup){% endif %}{% else %}My Organization{% endif %} - E-DBA</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        nav {
+            background-color: #343a40;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        nav a { color: white; text-decoration: none; font-weight: bold; margin-left: 15px; }
+        nav a:hover { text-decoration: underline; }
+        nav span, nav strong { color: white; margin-right: 10px; }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 500;
+            color: #333;
+            text-align: left;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        h3 { font-size: 1.2rem; color: #444; margin-top: 20px; margin-bottom: 10px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; }
+        .section, .status-section {
+            background-color: #fff; padding: 20px; border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        .full-width-grid-item {
+            grid-column: 1 / -1; 
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9em; }
+        th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+        th { background-color: #e9ecef; font-weight: 600; color: #495057; }
+
+        button, .btn, a.btn {
+            display: inline-block; font-weight: 400; color: #212529; text-align: center;
+            vertical-align: middle; cursor: pointer; user-select: none; background-color: #f8f9fa;
+            border: 1px solid #ced4da; padding: 6px 12px; font-size: 0.9rem; line-height: 1.5;
+            border-radius: 0.25rem; text-decoration: none; margin: 5px 3px;
+            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        button:hover, .btn:hover, a.btn:hover {
+            color: #212529; background-color: #e2e6ea; border-color: #dae0e5; text-decoration: none;
+        }
+        .btn-primary { color: #fff; background-color: #007bff; border-color: #007bff; }
+        .btn-primary:hover { background-color: #0069d9; border-color: #0062cc; color: #fff;}
+        .btn-danger { color: #fff; background-color: #dc3545; border-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; border-color: #bd2130; color: #fff;}
+        .btn-warning { color: #212529; background-color: #ffc107; border-color: #ffc107; }
+        .btn-warning:hover { background-color: #e0a800; border-color: #d39e00; color: #212529;}
+        .btn-secondary { color: #fff; background-color: #6c757d; border-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; border-color: #545b62; color: #fff;}
+        .btn-success { color: #fff; background-color: #28a745; border-color: #28a745; }
+        .btn-success:hover { background-color: #218838; border-color: #1e7e34; color: #fff;}
+
+        input[type="text"], input[type="email"], select, textarea {
+            width: calc(100% - 22px); padding: 8px 10px; margin-bottom: 10px; font-size: 0.9rem;
+            line-height: 1.5; color: #495057; background-color: #fff; background-clip: padding-box;
+            border: 1px solid #ced4da; border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        input[type="text"]:focus, input[type="email"]:focus, select:focus, textarea:focus {
+            border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        input[type="checkbox"] { margin-right: 8px; transform: scale(1.1); vertical-align: middle; }
+        label { display: inline-block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group { margin-bottom: 1rem; }
+        .form-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom:1rem; }
+        .form-inline label { margin-bottom:0; margin-right: 5px;}
+        .form-inline input[type="email"] { flex-grow: 1; min-width: 200px; }
+        .form-inline input[type="text"] { width: auto; flex-grow:1; min-width: 150px; }
+        .form-inline button { align-self: center; }
+
+        .alert { position: relative; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; font-size: 0.9em; }
+        .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;}
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb;}
+        .alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb;}
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba;}
+
+        .service-toggle { margin-bottom: 10px; }
+        .service-toggle label { font-weight: normal; }
+        .status-text-approved { color: green; font-weight: bold; }
+        .status-text-pending { color: orange; font-weight: bold; }
+        .status-text-rejected { color: red; font-weight: bold; }
+        .status-text-default { color: #555; font-weight: bold; }
+
+        /* --- Modal Styles (Copied from previous response) --- */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 10% auto; padding: 30px; border: 1px solid #888;
+            width: 80%; max-width: 600px; border-radius: 8px; position: relative;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        }
+        .modal-header { padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+        .modal-header h3 { margin: 0; font-size: 1.4rem; }
+        .modal-footer { padding-top: 15px; border-top: 1px solid #eee; margin-top: 20px; text-align: right; }
+        .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover, .close-btn:focus { color: black; text-decoration: none; }
+        .modal-content .form-group input,
+        .modal-content .form-group select { width: calc(100% - 24px); }
+        .modal-content .form-group label { display: block; margin-bottom: 5px; }
+        .modal-content .form-group input[type="checkbox"] { width: auto; margin-right: 5px; }
+        .modal-content .form-group label[for^="access-"] { display: inline-block; margin-bottom: 10px; font-weight: normal; }
+        .modal-content .form-group br { display: none; }
+
+        .pagination { display: flex; justify-content: center; padding-left: 0; list-style: none; border-radius: 0.25rem; margin-top: 20px; }
+        .page-item { margin: 0 3px; }
+        .page-link { position: relative; display: block; padding: 0.5rem 0.75rem; line-height: 1.25; color: #007bff; background-color: #fff; border: 1px solid #dee2e6; text-decoration: none; }
+        .page-link:hover { color: #0056b3; text-decoration: none; background-color: #e9ecef; border-color: #dee2e6; }
+        .page-item.active .page-link { z-index: 1; color: #fff; background-color: #007bff; border-color: #007bff; }
+        .page-item.disabled .page-link { color: #6c757d; pointer-events: none; cursor: auto; background-color: #fff; border-color: #dee2e6; }
+    </style>
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <div>
+                <a href="{{ url_for('main.index') }}">Home</a>
+                {% if organization_data and organization_data.name %}
+                <span>| Organization: <strong>{{ organization_data.name }}</strong></span>
+                {% elif oconvener_user and oconvener_user.organization_name %}
+                 <span>| Proposed Organization: <strong>{{ oconvener_user.organization_name }}</strong></span>
+                {% endif %}
+            </div>
+            <div>
+                <span>Welcome, O-Convener <strong>{{ oconvener_user.email }}</strong>!</span>
+                <a href="{{ url_for('user.logout_page') }}">Logout</a>
+            </div>
+        </nav>
+
+        <h1>O-Convener Dashboard</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category_full, message in messages %}
+                    {% set category = category_full.split('_')[0] if '_' in category_full else category_full %}
+                    {% if category not in ['org_details', 'member_management', 'service_availability', 'workspace_log'] %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {# --- Section for Organization Status and Basic Info --- #}
+        <section class="section" id="org-status-and-info">
+            <h2>Organization Status & Information</h2>
+            {% with org_detail_messages = get_flashed_messages(with_categories=true, category_filter=['org_details']) %}
+                {% if org_detail_messages %}{% for category, message in org_detail_messages %}<div class="alert alert-{{ category.split('_')[0] }}">{{ message }}</div>{% endfor %}{% endif %}
+            {% endwith %}
+
+            <p><strong>Organization Name:</strong> {{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else "N/A") }}</p>
+            <p><strong>Organization ID:</strong> {{ organization_data._id if organization_data and organization_data._id else (oconvener_user.organization_id if oconvener_user else "N/A") }}</p>
+
+            {# Display Status based on view_status from routes.py #}
+            {% if view_status == "approved_active" %}
+                <p><strong>Status:</strong> <span class="status-text-approved">Active</span></p>
+                <p><strong>Formalized At:</strong>
+                    {% if organization_data and organization_data.created_at %}
+                        {{ organization_data.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+                    {% elif approval_request_data and approval_request_data.approved_at %}
+                        {{ approval_request_data.approved_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} (Approval Request Timestamp)
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
+                <hr style="margin: 15px 0;">
+                <form action="{{ url_for('user.oconvener_update_org_name') }}" method="POST" class="form-inline">
+                    <label for="org_name_update">Update Organization Name:</label>
+                    <input type="text" id="org_name_update" name="organization_name" value="{{ organization_data.name if organization_data else '' }}" required>
+                    <button type="submit" class="btn btn-primary">Update Name</button>
+                </form>
+
+            {% elif view_status == "rejected" %}
+                <p><strong>Status:</strong> <span class="status-text-rejected">Registration Rejected by E-Admin</span></p>
+                <div class="alert alert-danger">
+                    <p>Your application to register '<strong>{{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else 'this organization') }}</strong>' was rejected.</p>
+                    {% if rejection_reason %}
+                        <p><strong>Reason:</strong> {{ rejection_reason }}</p>
+                    {% endif %}
+                    {% if approval_request_data and approval_request_data.get('proof_document_path') %}
+                        <p>Your submitted proof: <a href="{{ url_for('user.serve_proof_document', filename=approval_request_data.proof_document_path) }}" target="_blank" class="btn btn-secondary btn-sm">View Submitted Document</a></p>
+                    {% endif %}
+                    <p style="margin-top:15px;">Please review the feedback, make any necessary corrections, and then resubmit your application via the organization setup page.</p>
+                    <a href="{{ url_for('user.oconvener_setup_organization_page') }}" class="btn btn-warning">Modify and Resubmit Registration Details</a>
+                </div>
+
+            {% elif view_status == "pending_approval" %}
+                <p><strong>Status:</strong> <span class="status-text-pending">Pending E-Admin Approval</span></p>
+                <div class="alert alert-info">
+                    <p>Your application to register organization '<strong>{{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else 'this organization') }}</strong>' is currently pending E-Admin approval.</p>
+                    <p>Submitted At: {{ approval_request_data.submitted_at.strftime('%Y-%m-%d %H:%M:%S UTC') if approval_request_data and approval_request_data.submitted_at else 'N/A' }}</p>
+                    {% if approval_request_data and approval_request_data.get('proof_document_path') %}
+                        <p>Your submitted proof: <a href="{{ url_for('user.serve_proof_document', filename=approval_request_data.proof_document_path) }}" target="_blank" class="btn btn-secondary btn-sm">View Submitted Document</a></p>
+                    {% endif %}
+                    <p style="margin-top:15px;">Please check back later for updates.</p>
+                </div>
+
+            {% elif view_status == "not_submitted" %}
+                <p><strong>Status:</strong> <span class="status-text-default">Not Yet Submitted for Approval</span></p>
+                <div class="alert alert-info">
+                    <p>Your organization '<strong>{{ oconvener_user.organization_name if oconvener_user else "N/A" }}</strong>' (ID: {{ oconvener_user.organization_id if oconvener_user else "N/A" }}) has not yet been formally submitted for E-Admin approval.</p>
+                    <p>To enable full dashboard functionalities, please complete the organization registration process.</p>
+                    <a href="{{ url_for('user.oconvener_setup_organization_page') }}" class="btn btn-success">Register Your Organization Now</a>
+                </div>
+                
+            {% elif view_status == "issue_sync" %}
+                <p><strong>Status:</strong> <span class="status-text-default">Approval Processed - Activation Pending</span></p>
+                <div class="alert alert-warning">
+                    <p>Your organization's approval has been processed by an E-Admin, but the organization is not yet fully active in the system.</p>
+                    <p>This may be a temporary delay. If this status persists for an extended period, please contact an administrator for assistance.</p>
+                    <p>Reference Organization Name: {{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else 'N/A') }}</p>
+                </div>
+
+            {% elif view_status == "error_config" %} {# Renamed from error_no_org_id for clarity #}
+                <p><strong>Status:</strong> <span class="status-text-rejected">Account Configuration Error</span></p>
+                <div class="alert alert-danger">
+                    <p>Your O-Convener account is not properly configured with an Organization ID. This ID is essential for managing your organization.</p>
+                    <p>Please contact a system administrator to resolve this issue before you can proceed.</p>
+                </div>
+            {% else %} {# Fallback for any unexpected view_status value #}
+                <p><strong>Status:</strong> <span class="status-text-default">Unknown</span></p>
+                <div class="alert alert-danger">
+                     <p>The current status of your organization could not be determined. Please contact support for assistance.</p>
+                     <p>Internal Status Code: '{{ view_status }}'</p>
+                </div>
+            {% endif %}
+        </section>
+
+        {# --- Conditional Sections for Approved/Active Organizations --- #}
+        {% if view_status == "approved_active" %}
+            <div class="dashboard-grid"> {# This grid is only for the functional sections below #}
+                {# Members Section - MODIFIED #}
+                <section class="section" id="members-section">
+                    <h2>Manage Organization Members</h2>
+                    {% with messages = get_flashed_messages(with_categories=true, category_filter=['member_management', 'member_management_edit']) %}
+                        {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category.split('_')[0] }}">{{ message }}</div>{% endfor %}{% endif %}
+                    {% endwith %}
+
+                    {# Button to trigger the modal #}
+                    <div class="form-group">
+                         <button type="button" id="show-add-member-modal-btn" class="btn btn-success">Add New Member</button>
+                    </div>
+                    <hr style="margin: 20px 0;">
+                    <h3>Current Members <a href="{{ url_for('user.oconvener_dashboard_page', refresh_members='true') }}" class="btn btn-secondary btn-sm" style="font-size: 0.8em; padding: 3px 8px; text-decoration:none;">Refresh</a></h3>
+                    {% if members_list %}
+                    <table>
+                        <thead><tr><th>Email</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {% for member in members_list %}
+                            <tr>
+                                <td>{{ member.email }}</td>
+                                <td>{{ member.username }}</td>
+                                <td>{{ member.user_role }}</td>
+                                <td>
+                                    <form action="{{ url_for('user.oconvener_remove_member', member_email_to_remove=member.email) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this member?');">
+                                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                    </form>
+                                    <a href="{{ url_for('user.oconvener_edit_member_page', member_id=member._id) }}" class="btn btn-warning btn-sm" style="text-decoration:none;">Edit</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>No other members in the organization yet.</p>
+                    {% endif %}
+                </section>
+
+                {# Services Section - UNCHANGED #}
+                <section class="section" id="services-section">
+                    <h2>Service Availability <a href="{{ url_for('user.oconvener_dashboard_page', refresh_services='true') }}" class="btn btn-secondary btn-sm" style="font-size: 0.8em; padding: 3px 8px; text-decoration:none;">Refresh</a></h2>
+                     {% with messages = get_flashed_messages(with_categories=true, category_filter=['service_availability']) %}
+                        {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category.split('_')[0] }}">{{ message }}</div>{% endfor %}{% endif %}
+                    {% endwith %}
+                    <form action="{{ url_for('user.oconvener_set_service_availability') }}" method="POST">
+                        {% if available_services is defined and available_services is not none %}
+                            {% for service_key, service_display_name in service_names.items() %}
+                            <div class="service-toggle">
+                                <input type="checkbox" id="service-{{ service_key }}" name="service_{{ service_key }}" value="true" {% if available_services.get(service_key) %}checked{% endif %}>
+                                <label for="service-{{ service_key }}">{{ service_display_name }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="alert alert-warning">Service configuration not loaded or undefined.</p>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary">Save Service Settings</button>
+                    </form>
+                </section>
+
+                {# Logs Section - UNCHANGED #}
+                <section class="section full-width-grid-item" id="logs-section">
+                    <h2>Organization Activity Log <a href="{{ url_for('user.oconvener_dashboard_page', refresh_logs='true') }}" class="btn btn-secondary btn-sm" style="font-size: 0.8em; padding: 3px 8px; text-decoration:none;">Refresh</a></h2>
+                    {% with messages = get_flashed_messages(with_categories=true, category_filter=['workspace_log']) %}
+                        {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category.split('_')[0] }}">{{ message }}</div>{% endfor %}{% endif %}
+                    {% endwith %}
+
+                    {% if organization_logs %}
+                    <table>
+                        <thead><tr><th>Time</th><th>User</th><th>Activity</th><th>Details</th></tr></thead>
+                        <tbody>
+                            {% for log in organization_logs %} {# Shows up to 15 logs passed from route #}
+                            <tr>
+                                <td>{{ log.activityTime.strftime('%Y-%m-%d %H:%M:%S UTC') if log.activityTime else 'N/A' }}</td>
+                                <td>{{ log.userAccount }}</td>
+                                <td>{{ log.activityName }}</td>
+                                <td>{{ log.details }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    {# --- Pagination Controls --- #}
+                    {% if total_log_pages is defined and total_log_pages > 1 %}
+                    <ul class="pagination">
+                        <li class="page-item {% if current_log_page <= 1 %}disabled{% endif %}"><a class="page-link" href="{{ url_for('user.oconvener_dashboard_page', log_page=current_log_page - 1) if current_log_page > 1 else '#' }}">Previous</a></li>
+                        {% set start_page = [1, current_log_page - 2] | max %}{% set end_page = [total_log_pages, current_log_page + 2] | min %}
+                        {% if start_page > 1 %}<li class="page-item"><a class="page-link" href="{{ url_for('user.oconvener_dashboard_page', log_page=1) }}">1</a></li>{% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}{% endif %}
+                        {% for page_num in range(start_page, end_page + 1) %}<li class="page-item {% if page_num == current_log_page %}active{% endif %}"><a class="page-link" href="{{ url_for('user.oconvener_dashboard_page', log_page=page_num) }}">{{ page_num }}</a></li>{% endfor %}
+                        {% if end_page < total_log_pages %}{% if end_page < total_log_pages - 1 %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}<li class="page-item"><a class="page-link" href="{{ url_for('user.oconvener_dashboard_page', log_page=total_log_pages) }}">{{ total_log_pages }}</a></li>{% endif %}
+                        <li class="page-item {% if current_log_page >= total_log_pages %}disabled{% endif %}"><a class="page-link" href="{{ url_for('user.oconvener_dashboard_page', log_page=current_log_page + 1) if current_log_page < total_log_pages else '#' }}">Next</a></li>
+                    </ul>
+                    {% endif %}
+                    {# --- End Pagination Controls --- #}
+
+                    {% else %}
+                        <p>No organization activity logs found.</p>
+                    {% endif %}
+                </section> 
+            </div> 
+
+        {% elif view_status != "approved_active" and view_status != "error_config" %}
+            {# Message for non-approved states regarding other functionalities #}
+            <section class="section">
+                 <p class="alert alert-warning">Full dashboard functionalities like member management, service availability, and detailed activity logs will be available once your organization registration is approved and active.</p>
+            </section>
+        {% endif %}
+
+    </div> {# End of .dashboard-container #}
+
+    {# --- Add Member Modal HTML (Copied from previous response) --- #}
+    <div id="add-member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-add-member-modal-btn">&times;</span>
+            <div class="modal-header">
+                <h3>Add New Organization Member</h3>
+            </div>
+            <form action="{{ url_for('user.oconvener_add_member') }}" method="POST" id="add-member-form">
+                {# Email, Username, Role fields remain the same #}
+                <div class="form-group"><label for="modal-member-email">Email:</label><input type="email" id="modal-member-email" name="email" placeholder="Member's email address" required></div>
+                <div class="form-group"><label for="modal-member-username">Username:</label><input type="text" id="modal-member-username" name="username" placeholder="Assign a username (optional)"></div>
+                <div class="form-group"><label for="modal-member-role">Assign Role:</label><select id="modal-member-role" name="user_role"><option value="{{ User.ROLE_PUBLIC_CONSUMER }}" selected>Public Data Consumer</option><option value="{{ User.ROLE_PRIVATE_CONSUMER }}">Private Data Consumer</option><option value="{{ User.ROLE_PRIVATE_PROVIDER }}">Private Data Provider</option></select></div>
+
+                {# --- MODIFIED: Access Rights using Radio Buttons --- #}
+                <div class="form-group">
+                    <label>Assign Access Right Level:</label><br>
+                    {# Use type="radio" and the SAME name attribute #}
+                    {# No 'checked' attribute for default selection #}
+                    <input type="radio" class="access-right-radio" id="access-level-3" name="access_right_level" value="{{ User.ACCESS_PUBLIC }}">
+                    <label for="access-level-1">Level 1 (Public Access - 1000 RMB)</label>
+
+                    <input type="radio" class="access-right-radio" id="access-level-2" name="access_right_level" value="{{ User.ACCESS_PRIVATE_CONSUME }}">
+                    <label for="access-level-2">Level 2 (Private Consume - 100 RMB/person)</label>
+
+                    <input type="radio" class="access-right-radio" id="access-level-1" name="access_right_level" value="{{ User.ACCESS_PRIVATE_PROVIDE }}">
+                    <label for="access-level-3">Level 3 (Private Provide - Fee Applicable)</label>
+                    {# Consider adding a required attribute to one if selection is mandatory #}
+                </div>
+
+                {# --- Money Input Section (Dynamically Shown) --- #}
+                <div class="form-group" id="money-input-section" style="display: none;">
+                    <label for="modal-membership-fee">Membership Fee (RMB):</label>
+                    <input type="number" id="modal-membership-fee" name="membership_fee" placeholder="Enter fee amount (e.g., 100 for Level 2)" min="0" step="any">
+                    
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Add Member</button>
+                    <button type="button" id="cancel-add-member-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# --- MODIFIED: JavaScript for Modal Control AND Money Field Visibility --- #}
+    <script>
+        // --- Modal Control Logic (Keep as before) ---
+        var openModalBtn = document.getElementById("show-add-member-modal-btn");
+        if (openModalBtn) {
+            var modal = document.getElementById("add-member-modal");
+            var closeModalSpan = document.getElementById("close-add-member-modal-btn");
+            var cancelModalBtn = document.getElementById("cancel-add-member-btn");
+
+            openModalBtn.onclick = function() {
+                if(modal) {
+                     // Reset form state when opening (optional, but good practice)
+                     document.getElementById("add-member-form").reset(); // Reset all form fields
+                     checkAccessRights(); // Ensure money field visibility is correct initially
+                     modal.style.display = "block";
+                 }
+            }
+            if (closeModalSpan) { closeModalSpan.onclick = function() { if(modal) modal.style.display = "none"; } }
+            if (cancelModalBtn) { cancelModalBtn.onclick = function() { if(modal) modal.style.display = "none"; } }
+            window.onclick = function(event) { if (event.target == modal) { if(modal) modal.style.display = "none"; } }
+        }
+
+        // --- MODIFIED: Money Field Visibility Logic for Radio Buttons ---
+        var moneySection = document.getElementById("money-input-section");
+        var accessRadioButtons = document.querySelectorAll('input[name="access_right_level"]'); // Select radio buttons by name
+
+        // Function to check selected radio button and show/hide money section
+        function checkAccessRights() {
+            var showMoneyInput = false;
+            var selectedValue = null;
+
+            accessRadioButtons.forEach(function(radio) {
+                if (radio.checked) {
+                    selectedValue = radio.value;
+                }
+            });
+
+            // Show money input if Level 1 (value=3) or Level 2 (value=2) is selected
+            if (selectedValue == "{{ User.ACCESS_PRIVATE_CONSUME }}" || selectedValue == "{{ User.ACCESS_PRIVATE_PROVIDE }}" || selectedValue == "{{ User.ACCESS_PUBLIC }}") {
+                showMoneyInput = true;
+                 // Optional: Pre-fill or guide based on selection
+                var feeInput = document.getElementById("modal-membership-fee");
+                if (selectedValue == "{{ User.ACCESS_PRIVATE_CONSUME }}") {
+                    feeInput.value = "100.0"; 
+                    feeInput.placeholder = "0 RMB";
+                } else if (selectedValue == "{{ User.ACCESS_PRIVATE_PROVIDE }}") {
+                    feeInput.value = "0.0"; 
+                    feeInput.placeholder = "Enter fee 100RMB";
+                } else if (selectedValue == "{{ User.ACCESS_PUBLIC }}") {
+                    feeInput.value = "1000.0"
+                    feeInput.placeholder = "Enter fee 1000RMB";
+                }
+            } else {
+                 // Clear the fee input when hiding it
+                 document.getElementById("modal-membership-fee").value = "";
+                 document.getElementById("modal-membership-fee").placeholder = "Enter fee amount"; // Reset placeholder
+            }
+
+
+            if (moneySection) {
+                moneySection.style.display = showMoneyInput ? 'block' : 'none';
+            }
+        }
+
+        // Add event listener to each radio button
+        accessRadioButtons.forEach(function(radio) {
+            radio.addEventListener('change', checkAccessRights);
+        });
+    </script>
+</body>
+</html>

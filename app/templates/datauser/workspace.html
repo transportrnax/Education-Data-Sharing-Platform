@@ -1,0 +1,393 @@
+{% extends 'basic.html' %}
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <title>O-Convener Dashboard - {% if organization_data and organization_data.name %}{{ organization_data.name }}{% elif oconvener_user and oconvener_user.organization_name %}{{ oconvener_user.organization_name }} {% if view_status != 'active' %}(Pending Setup){% endif %}{% else %}My Organization{% endif %} - E-DBA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/oconvener_style.css') }}">
+
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <div>
+                <a href="{{ url_for('main.index') }}">Home</a>
+                {% if organization_data and organization_data.name %}
+                <span>| Organization: <strong>{{ organization_data.name }}</strong></span>
+                {% elif oconvener_user and oconvener_user.organization_name %}
+                 <span>| Proposed Organization: <strong>{{ oconvener_user.organization_name }}</strong></span>
+                {% endif %}
+            </div>
+            <div>
+                <span>Welcome, O-Convener <strong>{{ oconvener_user.email }}</strong>!</span>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </nav>
+
+        <h1>O-Convener Dashboard</h1>
+
+        {# General Flash Messages - Display ALL flashed messages here for simplicity with non-AJAX modal #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category_full, message in messages %}
+                     {% set category = category_full.split('_')[-1] %} {# Try to get 'success', 'danger' etc. #}
+                     <div class="alert alert-{{ category if category in ['success', 'danger', 'info', 'warning'] else 'secondary' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="section" id="org-status-and-info">
+            <h2>Organization Status & Information</h2>
+            <p><strong>Organization Name:</strong> {{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else "N/A") }}</p>
+            <p><strong>Organization ID:</strong> {{ organization_data._id if organization_data and organization_data._id else (oconvener_user.organization_id if oconvener_user else "N/A") }}</p>
+            {% if view_status == "active" %}
+                <p><strong>Status:</strong> <span class="status-text-approved">Active</span></p>
+                 <p><strong>Formalized At:</strong>
+                    {% if organization_data and organization_data.created_at %}
+                        {{ organization_data.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+                    {% elif approval_request_data and approval_request_data.approved_at %}
+                        {{ approval_request_data.approved_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} (Approval Request Timestamp)
+                    {% else %} N/A {% endif %}
+                </p>
+                <hr style="margin: 15px 0;">
+                <form action="{{ url_for('workspace.oconvener_update_org_name_route') }}" method="POST" class="form-inline">
+                    <label for="org_name_update">Update Organization Name:</label>
+                    <input type="text" id="org_name_update" name="organization_name" value="{{ organization_data.name if organization_data else '' }}" required class="form-control">
+                    <button type="submit" class="btn btn-primary">Update Name</button>
+                </form>
+            {% elif view_status == "rejected" %}
+                 <p><strong>Status:</strong> <span class="status-text-rejected">Registration Rejected</span></p>
+                 <div class="alert alert-danger">
+                     <p>Your application for '<strong>{{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else 'this organization') }}</strong>' was rejected.</p>
+                     {% if rejection_reason %}<p><strong>Reason:</strong> {{ rejection_reason }}</p>{% endif %}
+                     <a href="{{ url_for('workspace.oconvener_setup_organization_page') }}" class="btn btn-warning">Modify and Resubmit</a>
+                 </div>
+            {% elif view_status == "pending_approval" %}
+                <p><strong>Status:</strong> <span class="status-text-pending">Pending E-Admin Approval</span></p>
+                 <div class="alert alert-info">
+                     <p>Application for '<strong>{{ organization_data.name if organization_data and organization_data.name else (oconvener_user.organization_name if oconvener_user else 'this organization') }}</strong>' is pending.</p>
+                 </div>
+            {% elif view_status == "not_submitted" %}
+                <p><strong>Status:</strong> <span class="status-text-default">Not Submitted</span></p>
+                <a href="{{ url_for('workspace.oconvener_setup_organization_page') }}" class="btn btn-success">Register Your Organization Now</a>
+            {% else %}
+                <p><strong>Status:</strong> <span class="status-text-default">Unknown/Error</span></p>
+                <div class="alert alert-warning"><p>Organization status is unclear. {{ view_status }}</p></div>
+            {% endif %}
+        </section>
+
+        {% if view_status == "active" %}
+            <div class="dashboard-grid">
+                <section class="section" id="members-section"> {# You can rename id to e.g., "member-actions-section" if you prefer #}
+                    <h2>Manage Organization Members</h2>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-success" id="openAddMemberModalBtn">Add New Member</button>
+                    </div>
+                    <button type="button" class="btn btn-info" id="openImportExcelModalBtn">Import from Excel</button>
+
+                    {# The HR and Current Members table have been moved out of this section #}
+                </section>
+
+                <section class="section" id="service-availability-section">
+                    <h2>Service Availability</h2>
+
+                    <form action="{{ url_for('workspace.oconvener_set_service_availability_route') }}" method="POST">
+                        <div class="form-group">
+                            <label>Select available services <span style="color:red;">*</span></label><br>
+
+                            {# Thesis Access Service Checkbox #}
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                    class="form-check-input service-availability-checkbox" 
+                                    id="service_thesis_access" 
+                                    name="service_thesis_access" 
+                                    value="true"
+                                    {% if available_services.get('thesisAccess') %}checked{% endif %}>
+                                <label for="service_thesis_access" class="checkbox-label form-check-label">Thesis Access Service</label>
+                            </div>
+
+                            {# Course Information Service Checkbox #}
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                    class="form-check-input service-availability-checkbox" 
+                                    id="service_course_information" 
+                                    name="service_course_information" 
+                                    value="true"
+                                    {% if available_services.get('courseInfo') %}checked{% endif %}>
+                                <label for="service_course_information" class="checkbox-label form-check-label">Course Information Service</label>
+                            </div>
+
+                            {# Student Identity Check Service Checkbox #}
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                    class="form-check-input service-availability-checkbox" 
+                                    id="service_student_identity_check" 
+                                    name="service_student_identity_check" 
+                                    value="true"
+                                    {% if available_services.get('identityCheck') %}checked{% endif %}>
+                                <label for="service_student_identity_check" class="checkbox-label form-check-label">Student Identity Check Service</label>
+                            </div>
+
+                            {# Student GPA Record Access Service Checkbox #}
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                    class="form-check-input service-availability-checkbox" 
+                                    id="service_student_gpa_record" 
+                                    name="service_student_gpa_record" 
+                                    value="true"
+                                    {% if available_services.get('gpaRecord') %}checked{% endif %}>
+                                <label for="service_student_gpa_record" class="checkbox-label form-check-label">Student GPA Record Access Service</label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Save Service Settings</button>
+                    </form>
+                </section>
+            </div>
+            
+            <section class="section full-width-grid-item" id="current-members-listing">
+                <h2>Current Members</h2> {# Changed from H3 to H2 for consistency with other sections #}
+                {% if members_list %}
+                <div style="overflow-x:auto;"> {# Make table scrollable on small screens #}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Username</th>
+                            <th>Access Level</th>
+                            <th>Fee</th>
+                            <th style="min-width: 150px;">Actions</th> {# Give more space for buttons #}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member_item in members_list %}
+                        <tr id="member-row-{{ member_item.user_id|string }}"> 
+                            <td class="member-email-cell">{{ member_item.email }}</td>
+                            <td class="member-username-cell">{{ member_item.username if member_item.username else 'N/A' }}</td>
+                            <td class="member-access-cell">
+                                {% set access_display = [] %}
+                                {% if member_item.access_level and member_item.access_level[0] %}{% set _ = access_display.append("Public") %}{% endif %}
+                                {% if member_item.access_level and member_item.access_level|length > 1 and member_item.access_level[1] %}{% set _ = access_display.append("Consume") %}{% endif %}
+                                {% if member_item.access_level and member_item.access_level|length > 2 and member_item.access_level[2] %}{% set _ = access_display.append("Provide") %}{% endif %}
+                                {{ access_display|join(', ') if access_display else 'None' }}
+                            </td>
+                            <td class="member-fee-cell">
+                                {{ '%0.2f'|format(member_item.membership_fee if member_item.membership_fee is defined and member_item.membership_fee is not none else 0.0) }}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('workspace.oconvener_remove_member_route', member_email=member_item.email) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this member?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                </form>
+                                <button type="button" class="btn btn-warning btn-sm btn-open-edit-member-modal"
+                                        data-member-id="{{ member_item.user_id|string }}"
+                                        data-email="{{ member_item.email }}"
+                                        data-username="{{ member_item.username if member_item.username else '' }}"
+                                        data-access-public="{{ 'true' if member_item.access_level and member_item.access_level[0] else 'false' }}"
+                                        data-access-consume="{{ 'true' if member_item.access_level and member_item.access_level|length > 1 and member_item.access_level[1] else 'false' }}"
+                                        data-access-provide="{{ 'true' if member_item.access_level and member_item.access_level|length > 2 and member_item.access_level[2] else 'false' }}"
+                                        data-initial-fee="{{ '%0.2f'|format(member_item.membership_fee if member_item.membership_fee is defined and member_item.membership_fee is not none else 0.0) }}">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p>No other members in the organization yet.</p>
+                {% endif %}
+            </section>
+
+            <section class="section full-width-grid-item" id="logs-section">
+                <h2>Organizaiton Log</h2>
+                {% if organization_logs %}
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                        <table class="table table-striped table-hover">
+                            <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 1;">
+                                <tr>
+                                    <th>Time (UTC)</th>
+                                    <th>User</th>
+                                    <th>Activity name</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log_entry in organization_logs %}
+                                <tr>
+                                    <td>{{ log_entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log_entry.timestamp else 'N/A' }}</td>
+                                    <td>{{ log_entry.userAccount | e }}</td>
+                                    <td>{{ log_entry.activityName | e }}</td>
+                                    <td>{{ log_entry.details | e }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="alert alert-info" style="margin-top: 15px;">No activity log</p>
+                {% endif %}
+            </section>
+        {% endif %}
+    </div>
+
+    {# --- Add Member Modal --- #}
+    <div class="modal" id="addMemberModal" tabindex="-1" aria-labelledby="addMemberModalLabel" aria-hidden="true"{% if session.get('_show_add_member_modal') %} style="display:flex;" {% endif %}>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="{{ url_for('workspace.oconvener_add_member_route') }}" method="POST" id="addMemberForm">
+                    {# <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}"> #} {# Removed CSRF #}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addMemberModalLabel">Add New Organization Member</h5>
+                        <button type="button" class="btn-close add-modal-close-btn" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="add_modal_member_email">User Email <span style="color:red;">*</span></label>
+                            <input type="email" class="form-control" id="add_modal_member_email" name="email" 
+                                   value="{{ session.get('_add_member_form_data', {}).get('email', '') }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_modal_member_username">Username (Optional)</label>
+                            <input type="text" class="form-control" id="add_modal_member_username" name="username"
+                                   value="{{ session.get('_add_member_form_data', {}).get('username', '') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Access Rights <span style="color:red;">*</span></label><br>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-add" id="add_modal_access_level_public" name="access_level_public" data-fee="1000.00" {% if session.get('_add_member_form_data', {}).get('access_level_public') == 'on' %}checked{% endif %}>
+                                <label for="add_modal_access_level_public" class="checkbox-label form-check-label">Public Data Access</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-add" id="add_modal_access_level_private_consume" name="access_level_private_consume" data-fee="100.00" {% if session.get('_add_member_form_data', {}).get('access_level_private_consume') == 'on' %}checked{% endif %}>
+                                <label for="add_modal_access_level_private_consume" class="checkbox-label form-check-label">Private Data Consume</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-add" id="add_modal_access_level_private_provide" name="access_level_private_provide" data-fee="0.00" {% if session.get('_add_member_form_data', {}).get('access_level_private_provide') == 'on' %}checked{% endif %}>
+                                <label for="add_modal_access_level_private_provide" class="checkbox-label form-check-label">Private Data Provide</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_modal_membership_fee">Membership Fee (RMB):</label>
+                            <input type="number" step="0.01" id="add_modal_membership_fee" name="membership_fee" class="form-control" value="{{ session.get('_add_member_form_data', {}).get('membership_fee', '0.00') }}" readonly>
+                            <small>Auto-calculated. Can be overridden if necessary.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary add-modal-close-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Confirm Add Member</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {# Clear session flags after use for Add Member Modal #}
+    {% if session.get('_show_add_member_modal') %}{{ session.pop('_show_add_member_modal', None) }}{{ session.pop('_add_member_form_data', None) }}{% endif %}
+
+
+    {# --- Edit Member Modal --- #}
+    <div class="modal" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true"
+        {% if session.get('_show_edit_member_modal_on_error') %} style="display:flex;" {% endif %}>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="editMemberForm_no_ajax" method="POST">
+                    {# <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}"> #}
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editMemberModalLabel">Edit Organization Member</h5>
+                        <button type="button" class="btn-close edit-modal-close-btn" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="edit_modal_member_email">User Email <span style="color:red;">*</span></label>
+                            <input type="email" class="form-control" id="edit_modal_member_email" name="email"
+                                value="{{ session.get('_edit_member_form_data', {}).get('email', '') }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_modal_member_username">Username</label>
+                            <input type="text" class="form-control" id="edit_modal_member_username" name="username"
+                                value="{{ session.get('_edit_member_form_data', {}).get('username', '') }}">
+                        </div>
+                        <div class="form-group">
+                            <label>User Role:</label>
+                            <input type="text" value="NORMAL" readonly class="form-control-plaintext">
+                        </div>
+                        <div class="form-group">
+                            <label>Access Rights <span style="color:red;">*</span></label><br>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-edit" id="edit_modal_access_level_public" name="access_level_public" data-fee="1000.00"
+                                    {% if session.get('_edit_member_form_data', {}).get('access_level_public') == 'on' %}checked{% endif %}>
+                                <label for="edit_modal_access_level_public" class="checkbox-label form-check-label">Public Data Access</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-edit" id="edit_modal_access_level_private_consume" name="access_level_private_consume" data-fee="100.00"
+                                    {% if session.get('_edit_member_form_data', {}).get('access_level_private_consume') == 'on' %}checked{% endif %}>
+                                <label for="edit_modal_access_level_private_consume" class="checkbox-label form-check-label">Private Data Consume</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input member-access-checkbox-edit" id="edit_modal_access_level_private_provide" name="access_level_private_provide" data-fee="0.00"
+                                    {% if session.get('_edit_member_form_data', {}).get('access_level_private_provide') == 'on' %}checked{% endif %}>
+                                <label for="edit_modal_access_level_private_provide" class="checkbox-label form-check-label">Private Data Provide</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_modal_membership_fee">Membership Fee (RMB):</label>
+                            <input type="number" step="0.01" id="edit_modal_membership_fee" name="membership_fee" class="form-control"
+                                value="{{ session.get('_edit_member_form_data', {}).get('membership_fee', '0.00') }}" readonly>
+                            <small>Auto-calculated based on Access Level.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary edit-modal-close-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {# Clear session flags after use for Edit Member Modal #}
+    {% if session.get('_show_edit_member_modal_on_error') %}{{ session.pop('_show_edit_member_modal_on_error', None) }}{{ session.pop('_edit_member_form_data', None) }}{% endif %}
+
+    {# --- START: Import Excel Modal --- #}
+    <div class="modal" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                {# Ensure the action points to your backend route for handling Excel uploads #}
+                <form action="{{ url_for('workspace.oconvener_upload_members_excel_route') }}" method="POST" enctype="multipart/form-data" id="importExcelForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importExcelModalLabel">Import Members from Excel</h5>
+                        <button type="button" class="btn-close import-excel-modal-close-btn" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="excel_file_input">Select Excel File (.xlsx, .xls)</label>
+                            <input type="file" class="form-control-file" id="excel_file_input" name="excel_file" accept=".xlsx, .xls" required>
+                            <small class="form-text text-muted" style="display: block; margin-top: 5px;">
+                                File should include columns like: Email (required), Username (optional).<br>
+                                For access rights: 'Access Public', 'Access Consume', 'Access Provide' (use TRUE/FALSE or 1/0).<br>
+                                'Membership Fee' (optional, otherwise auto-calculated based on access rights).
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary import-excel-modal-close-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Upload and Process</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {# --- END: Import Excel Modal --- #}
+    <script>
+    const SCRIPT_DATA = {
+        showAddMemberModal: {{ session.get('_show_add_member_modal', 'false') | tojson | safe }},
+        addMemberFormData: {{ (session.get('_add_member_form_data') or {}) | tojson | safe }},
+
+        editMemberBaseUrl: "{{ url_for('workspace.oconvener_edit_member_route', member_id_str='MEMBER_ID_PLACEHOLDER') }}",
+        showEditMemberModalOnError: {{ session.get('_show_edit_member_modal_on_error', 'None') | tojson | safe }},
+        editMemberFormDataOnError: {{ (session.get('_edit_member_form_data') or {}) | tojson | safe }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/oconvener_js.js') }}"></script>
+</body>
+</html>
+{% endblock %}

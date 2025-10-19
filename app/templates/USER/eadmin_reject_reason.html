@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN"> {# Assuming Chinese may be preferred based on previous interactions #}
+<head>
+    <meta charset="UTF-8">
+    <title>拒绝组织注册申请 - E-DBA E-Admin</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f8f9fa; }
+        .container { max-width: 700px; margin: 20px auto; background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .app-details { background-color: #f9f9f9; border: 1px solid #eee; border-radius: 4px; padding: 15px; margin-bottom: 20px; font-size: 0.95em; }
+        .app-details p { margin: 5px 0; }
+        .app-details strong { color: #555; min-width: 120px; display: inline-block; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            margin-bottom: 15px;
+        }
+        button { padding: 10px 18px; cursor: pointer; border-radius: 4px; border: none; font-size: 1em; }
+        .btn-reject { background-color: #dc3545; color: white; }
+        .btn-reject:hover { background-color: #c82333; }
+        .btn-cancel { background-color: #6c757d; color: white; margin-left: 10px; text-decoration: none; display: inline-block; line-height: normal; vertical-align: middle;}
+        .btn-cancel:hover { background-color: #5a6268; }
+        .button-group { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reject the organization's registration application</h1>
+
+        <div class="app-details">
+            <h2>Registration Details</h2>
+            <p><strong>Organization Name:</strong> {{ app.organization_name }}</p>
+            <p><strong>Organization ID (用户记录中):</strong> {{ app.organization_id_on_user }}</p>
+            <p><strong>Submit O-Convener ID:</strong> {{ app.oconvener_user_id }}</p> {# 考虑是否显示 O-Convener 邮箱会更直观 #}
+            <p><strong>Submit Time:</strong> {{ app.submitted_at.strftime('%Y-%m-%d %H:%M:%S UTC') if app.submitted_at else 'N/A' }}</p>
+            <p><strong>Status:</strong> {{ app.status }}</p>
+            <p><strong>Proof Document:</strong> 
+                {% if app.proof_document_path %}
+                <a href="{{ url_for('user.serve_proof_document', filename=app.proof_document_path) }}" target="_blank">View</a>
+                {% else %}
+                No provide
+                {% endif %}
+            </p>
+        </div>
+
+        <hr>
+
+        <form action="{{ url_for('user.eadmin_reject_app_submit', app_id=app._id) }}" method="POST">
+            <div class="form-group">
+                <label for="rejection_reason">Reject Reanson (must):</label>
+                <textarea id="rejection_reason" name="rejection_reason" rows="4" placeholder="Please explain in detail the reasons for rejecting the registration application of this organization..." required></textarea>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn-reject">Reject</button>
+                <a href="{{ url_for('user.eadmin_dashboard_page') }}" class="btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

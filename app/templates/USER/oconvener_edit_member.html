@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {# Ensure the 'member' object is passed and has an email attribute #}
+    <title>Edit Member - {{ member.email if member else 'Unknown Member' }} - O-Convener Dashboard</title>
+    {# Link to your main CSS or include styles directly #}
+    <style>
+        /* --- Copy relevant styles from OConvenerDashBoard.html --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6; margin: 0; padding: 0; background-color: #f8f9fa; color: #212529;
+        }
+        .dashboard-container {
+            max-width: 900px; /* Adjusted width for edit page */
+            margin: 20px auto; padding: 20px; background-color: #ffffff;
+            border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        nav {
+            background-color: #343a40; padding: 10px 20px; border-radius: 5px; margin-bottom: 30px;
+            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        nav a { color: white; text-decoration: none; font-weight: bold; margin-left: 15px; }
+        nav a:hover { text-decoration: underline; }
+        nav span, nav strong { color: white; margin-right: 10px; }
+
+        h1 { font-size: 1.8rem; font-weight: 500; color: #333; margin-bottom: 25px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; }
+        .section { background-color: #fff; padding: 25px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e9ecef; }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #495057;}
+        input[type="text"], input[type="email"], select {
+            display: block; width: calc(100% - 22px); padding: 10px; font-size: 0.95rem;
+            line-height: 1.5; color: #495057; background-color: #fff; background-clip: padding-box;
+            border: 1px solid #ced4da; border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        input[type="text"]:focus, input[type="email"]:focus, select:focus {
+            border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        input[readonly].form-control-plaintext { /* Style for read-only email */
+             background-color: #e9ecef; opacity: 1; border: 1px solid #ced4da; cursor: not-allowed;
+        }
+        input[type="checkbox"] { margin-right: 8px; transform: scale(1.1); vertical-align: middle; }
+        .access-rights-group label { display: inline-block; margin-bottom: 8px; font-weight: normal; margin-right: 15px; }
+        .access-rights-group br { display: none; } /* Avoid extra breaks */
+
+        /* Button Styles (Copied from dashboard) */
+        button, .btn, a.btn { /* ... (copy button styles from OConvenerDashBoard.html) ... */
+            display: inline-block; font-weight: 400; color: #212529; text-align: center;
+            vertical-align: middle; cursor: pointer; user-select: none; background-color: #f8f9fa;
+            border: 1px solid #ced4da; padding: 8px 15px; font-size: 0.95rem; line-height: 1.5;
+            border-radius: 0.25rem; text-decoration: none; margin: 5px 3px;
+            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        button:hover, .btn:hover, a.btn:hover { /* ... */ color: #212529; background-color: #e2e6ea; border-color: #dae0e5; text-decoration: none; }
+        .btn-primary { /* ... */ color: #fff; background-color: #007bff; border-color: #007bff; }
+        .btn-primary:hover { /* ... */ background-color: #0069d9; border-color: #0062cc; color: #fff;}
+        .btn-secondary { /* ... */ color: #fff; background-color: #6c757d; border-color: #6c757d; }
+        .btn-secondary:hover { /* ... */ background-color: #5a6268; border-color: #545b62; color: #fff;}
+        .form-actions { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: right; }
+
+        /* Alert Styles (Copied from dashboard) */
+        .alert { /* ... */ position: relative; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; font-size: 0.9em; }
+        .alert-danger { /* ... */ color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;}
+        .alert-success { /* ... */ color: #155724; background-color: #d4edda; border-color: #c3e6cb;}
+        .alert-info { /* ... */ color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb;}
+        .alert-warning { /* ... */ color: #856404; background-color: #fff3cd; border-color: #ffeeba;}
+
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <div>
+                <a href="{{ url_for('main.index') }}">Home</a>
+                <a href="{{ url_for('user.oconvener_dashboard_page') }}">Dashboard</a>
+                {# Ensure oconvener_user object is passed from the route #}
+                {% if oconvener_user and oconvener_user.organization_name %}
+                <span>| Organization: <strong>{{ oconvener_user.organization_name }}</strong></span>
+                {% endif %}
+            </div>
+            <div>
+                <span>Welcome, O-Convener <strong>{{ oconvener_user.email if oconvener_user else 'User' }}</strong>!</span>
+                <a href="{{ url_for('user.logout_page') }}">Logout</a>
+            </div>
+        </nav>
+
+        {# Ensure member object is passed from the route #}
+        <h1>Edit Member: {{ member.email if member else 'Error: Member not found' }}</h1>
+
+        {# Display flash messages specific to member editing #}
+        {% with messages = get_flashed_messages(with_categories=true, category_filter=['member_management_edit']) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category.split('_')[0] }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if member %} {# Only show form if member object exists #}
+            <section class="section">
+                <form action="{{ url_for('user.oconvener_edit_member_submit', member_id=member._id) }}" method="POST">
+                    {# Email (Read-only) #}
+                    <div class="form-group">
+                        <label for="edit-member-email">Email:</label>
+                        <input type="email" id="edit-member-email" name="email" value="{{ member.email }}" readonly class="form-control-plaintext">
+                        <small>Email address cannot be changed.</small>
+                    </div>
+
+                    {# Username #}
+                    <div class="form-group">
+                        <label for="edit-member-username">Username:</label>
+                        <input type="text" id="edit-member-username" name="username" value="{{ member.username if member.username else '' }}" placeholder="Enter username">
+                    </div>
+
+                    {# User Role Dropdown #}
+                    <div class="form-group">
+                        <label for="edit-member-role">User Role:</label>
+                        {# Ensure User class is passed from route to access constants #}
+                        <select id="edit-member-role" name="user_role">
+                            <option value="{{ User.ROLE_PUBLIC_CONSUMER }}" {% if member.user_role == User.ROLE_PUBLIC_CONSUMER %}selected{% endif %}>Public Data Consumer</option>
+                            <option value="{{ User.ROLE_PRIVATE_CONSUMER }}" {% if member.user_role == User.ROLE_PRIVATE_CONSUMER %}selected{% endif %}>Private Data Consumer</option>
+                            <option value="{{ User.ROLE_PRIVATE_PROVIDER }}" {% if member.user_role == User.ROLE_PRIVATE_PROVIDER %}selected{% endif %}>Private Data Provider</option>
+                            {# Add other roles if applicable and editable by OConvener #}
+                        </select>
+                    </div>
+
+                    {# Access Rights Checkboxes #}
+                    <div class="form-group access-rights-group">
+                        <label>Access Rights:</label><br>
+                        {# Ensure User class is passed from route to access constants #}
+                        {# Ensure member.access_right is a list of integers #}
+                        <input type="checkbox" id="access-public-edit" name="access_rights" value="{{ User.ACCESS_PUBLIC }}" {% if User.ACCESS_PUBLIC in member.access_right %}checked{% endif %}>
+                        <label for="access-public-edit">Public Access</label>
+                        <br>
+                        <input type="checkbox" id="access-private-consume-edit" name="access_rights" value="{{ User.ACCESS_PRIVATE_CONSUME }}" {% if User.ACCESS_PRIVATE_CONSUME in member.access_right %}checked{% endif %}>
+                        <label for="access-private-consume-edit">Private Data Consume</label>
+                        <br>
+                        <input type="checkbox" id="access-private-provide-edit" name="access_rights" value="{{ User.ACCESS_PRIVATE_PROVIDE }}" {% if User.ACCESS_PRIVATE_PROVIDE in member.access_right %}checked{% endif %}>
+                        <label for="access-private-provide-edit">Private Data Provide</label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <a href="{{ url_for('user.oconvener_dashboard_page') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </section>
+        {% else %}
+            <div class="alert alert-danger">
+                Could not load member details. Please return to the dashboard.
+            </div>
+            <a href="{{ url_for('user.oconvener_dashboard_page') }}" class="btn btn-secondary">Back to Dashboard</a>
+        {% endif %}
+    </div> {# End .dashboard-container #}
+</body>
+</html>

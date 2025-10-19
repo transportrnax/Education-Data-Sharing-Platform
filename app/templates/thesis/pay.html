@@ -1,0 +1,8 @@
+{% extends 'basic.html' %}
+{% block content %}
+<h2>Pay for thesis: <i>{{ thesis.title }}</i></h2>
+<form method="post">
+  <p>Price: {{ thesis.price }}</p>
+  <button type="submit">Pay</button>
+</form>
+{% endblock %}

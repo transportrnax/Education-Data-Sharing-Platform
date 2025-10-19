@@ -1,0 +1,34 @@
+{% extends 'basic.html' %}
+{% block head %}
+<head>
+    <meta charset="UTF-8">
+    <title>All course</title>
+    <style>
+        body { font-family: sans-serif; }
+        .course {
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .course h2 { margin-top: 0; }
+    </style>
+</head>
+{% endblock %}
+{% block content %}
+<body>
+    <h1>All Courses List</h1>
+    {% if courses %}
+        {% for course in courses %}
+            <div class="course">
+                <h2>{{ course.title | e }}</h2> 
+                <p>Organization: {{ course.organization }}</p>
+                <p>Units: {{ course.units }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No course show</p>
+    {% endif %}
+</body>
+</html>
+{% endblock %}

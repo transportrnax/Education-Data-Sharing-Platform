@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}E-DBA{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 40px;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background-color: rgba(240, 240, 240, 0.8);
+            color: #2c3e50;
+            padding: 1em;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1em;
+        }
+        nav a {
+            color: #2c3e50;
+            text-decoration: none;
+            padding: 0.5em 1em;
+            border-radius: 5px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        nav a:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(-3px);
+        }
+        @media (max-width: 600px) {
+            nav {
+                flex-direction: column;
+                gap: 0.5em;
+            }
+        }
+        main {
+            padding: 1.5em;
+        }
+        .nav-underline {
+    width: 100%;
+    height: 6px;  /* 粗线的高度 */
+    background-color: #2c3e50;
+    position: relative;
+}
+
+.nav-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;  /* 距离上面那条线 3px */
+    left: 0;
+    width: 100%;
+    height: 2px;  /* 细线的高度 */
+    background-color: #2c3e50;
+}
+h1 {
+    font-size: 48px;  /* 调整字体大小 */
+    font-weight: bold; /* 可选：加粗字体 */
+    color: #2c3e50;    /* 可选：设置字体颜色 */
+    text-align: center;
+    margin-top: 50px;
+}
+    </style>
+    {% block head %} 
+    {% endblock %}
+</head>
+<body>
+    <header>
+        <h1 style="text-align: center; margin-top: 50px;">E-DBA</h1>
+        <nav>
+            <a href="{{ url_for('main.home') }}">Home</a>
+            {% if current_user.is_authenticated %}
+                {% if current_user.role.value == 4 %}
+                    <a href="{{ url_for('main.help_page') }}">Help</a>
+                {% endif %}
+             <!-- TODO: Add different functions for different users,get access_level-->
+                {% if current_user.role.value == 1 %}
+                    <a href="{{ url_for('admin.tadmin_dashboard_page') }}">Dashboard</a>
+                {% elif current_user.role.value == 2 %}
+                    <a href="{{ url_for('admin.eadmin_dashboard_page')}}">Dashboard</a>
+                {% elif current_user.role.value == 3 %}
+                    <a href="{{ url_for('workspace.oconvener_dashboard_page') }}">Dashboard</a>
+                {% elif current_user.role.value == 5%}
+                    <a href="{{ url_for('admin.senior_eadmin_dashboard_page') }}">Dashboard</a>
+                {% elif current_user.role.value == 4 %}
+
+                    {% if current_user.access_level[0] %}
+                        <a href="{{ url_for('datauser.public_consumer')}}">Dashboard</a>
+                    {% elif current_user.access_level[1] %}
+                        <a href="{{ url_for('datauser.private_consumer')}}">Dashboard</a>
+                    {% elif current_user.access_level[2] %}
+                        <a href="{{ url_for('datauser.provider_dashboard')}}">Dashboard</a>
+                    {% endif %}
+                {% endif %}
+
+                
+
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.register') }}">Register</a>
+                <a href="{{ url_for('auth.login') }}">Login</a>
+            {% endif %}
+        </nav>
+        <div class="nav-underline"></div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer style="text-align: center">
+        <hr>
+        <p>by Group a04</p>
+        <p>COMP3253/1001 - E-DBA - 2025</p>
+    </footer>
+</body>
+{% block scripts %}
+  <script>
+    // ✅ 自动管理本地 user_email
+    {% if current_user.is_authenticated %}
+      localStorage.setItem("user_email", "{{ current_user.email }}");
+    {% else %}
+      localStorage.removeItem("user_email");
+    {% endif %}
+  </script>
+{% endblock %}
+</html>

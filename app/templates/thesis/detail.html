@@ -1,0 +1,9 @@
+{% extends 'basic.html' %}
+{% block content %}
+<h2>{{ thesis.title }}</h2>
+<p><strong>Author: </strong>{{ thesis.author }}</p>
+<p><strong>Abstract: </strong>{{ thesis.abstract }}</p>
+<p><strong>Price: </strong>{{ thesis.price }}</p>
+
+<a href="{{ url_for('thesis.pay_thesis', thesis_id=thesis._id) }}">Pay and Download</a>
+{% endblock %}

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>E-Admin Dashboard - E-DBA</title>
+    <style>
+        /* 基本样式 */
+        body { font-family: sans-serif; padding: 15px; margin: 0; background-color: #f8f9fa; }
+        .dashboard-container { max-width: 1200px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2, h3, h4 { color: #333; margin-bottom: 15px; }
+        h1 {border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;}
+        h2 { border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; } /* Add separator for sections */
+
+        /* 导航栏 */
+        nav { background-color: #343a40; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;}
+        nav a { color: white; margin-right: 15px; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        nav span { color: white; }
+
+        /* 表格 */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; word-wrap: break-word; }
+        th { background-color: #f2f2f2; }
+
+        /* 按钮和链接 */
+        .action-buttons button, .action-buttons a.button, .form-group button, .filter-form button, .pagination a, .pagination button, .policy-form button, .update-policy-form button {
+            margin: 3px; padding: 6px 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #eee; font-size: 0.9em; text-decoration: none; display: inline-block; line-height: normal; vertical-align: middle;
+        }
+         .action-buttons button:hover, .action-buttons a.button:hover, .form-group button:hover, .filter-form button:hover, .pagination a:hover, .pagination button:hover, .policy-form button:hover, .update-policy-form button:hover {
+            background-color: #ddd; color: #333;
+        }
+        .approve-btn { background-color: #28a745; color: white; border-color: #28a745;}
+        .approve-btn:hover { background-color: #218838; color: white;}
+        .reject-btn { background-color: #dc3545; color: white; border-color: #dc3545;}
+        .reject-btn:hover { background-color: #c82333; color: white;}
+        .edit-btn { background-color: #ffc107; color: #333; border-color: #ffc107;} /* Style for future edit button */
+        .edit-btn:hover { background-color: #e0a800; color: #333;}
+
+        /* 筛选表单 */
+        .filter-form { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; padding: 10px; background-color: #f9f9f9; border-radius: 4px;}
+        .filter-form label { margin-bottom: 0; }
+        .filter-form select, .filter-form input[type="number"], .filter-form button { padding: 8px; border-radius: 4px; border: 1px solid #ccc;}
+
+        /* 分页 */
+        .pagination { margin-top: 20px; text-align: center; }
+        .pagination a, .pagination strong, .pagination span { margin: 0 5px; padding: 5px 10px; text-decoration: none; border: 1px solid #ddd; border-radius: 4px; color: #337ab7; display: inline-block; }
+        .pagination strong { background-color: #337ab7; color: white; border-color: #337ab7;}
+        .pagination a:hover { background-color: #eee; }
+
+        /* 提示信息 */
+        .alert { padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-size: 0.95em; border: 1px solid transparent;}
+        .alert-danger, .alert-policy_danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb;}
+        .alert-success, .alert-policy_success { background-color: #d4edda; color: #155724; border-color: #c3e6cb;}
+        .alert-info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb;}
+
+        /* 策略表单 */
+        .policy-form label, .update-policy-form label { font-weight: bold; margin-top:10px; }
+        .policy-form input[type="text"], .policy-form textarea, .policy-form input[type="file"],
+        .update-policy-form input[type="text"], .update-policy-form textarea, .update-policy-form input[type="file"] {
+            display: block;
+            margin-bottom: 10px;
+            width: calc(100% - 22px); /* Full width minus padding */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .policy-form textarea, .update-policy-form textarea { min-height: 80px; resize: vertical;}
+        .policy-form, .update-policy-form {
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            margin-top: 10px; /* Add margin to separate from h3/h4 */
+            margin-bottom: 25px;
+        }
+        .update-policy-form h4 { margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 10px;}
+
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <a href="{{ url_for('main.index') }}">Home</a>
+            <span style="color: #f2f2f2;">Welcome, E-Admin {{ session.user_email }}!</span>
+            <a href="{{ url_for('user.logout_page') }}">Logout</a>
+        </nav>
+
+        <h1>E-Admin Dashboard</h1>
+
+        {# General flashed messages shown at the top #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category or 'info' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section id="apps-section">
+            <h2>O-Convener Registration Applications</h2>
+            <form class="filter-form" action="{{ url_for('user.eadmin_dashboard_page') }}" method="GET">
+                <label for="app-status-filter">Filter Status:</label>
+                <select id="app-status-filter" name="app_status">
+                    <option value="pending_admin_approval" {% if current_app_filter == 'pending_admin_approval' %}selected{% endif %}>Pending Approval</option>
+                    <option value="approved" {% if current_app_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if current_app_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                    {# Add other statuses if needed #}
+                </select>
+                <button type="submit">Load Applications</button>
+            </form>
+             <table>
+                <thead>
+                    <tr>
+                        <th>Organization Name</th>
+                        <th>Submitter Email</th>
+                        <th>Submitted At</th>
+                        <th>Status</th>
+                        <th>Proof Document</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if applications %}
+                        {% for app in applications %}
+                        <tr>
+                            <td>{{ app.org_name or app.organization_name }}</td>
+                            <td>{{ app.email }}</td>
+                            <td>{{ app.submitted_at.strftime('%Y-%m-%d %H:%M:%S UTC') if app.submitted_at else 'N/A' }}</td>
+                            <td>{{ app.status }}</td>
+                            <td>
+                                {% if app.proof_document_path %}
+                                <a href="{{ url_for('user.serve_proof_document', filename=app.proof_document_path) }}" target="_blank">View Proof</a>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td class="action-buttons">
+                                {% if app.status == 'pending_admin_approval' %}
+                                <form action="{{ url_for('user.eadmin_approve_app', app_id=app._id) }}?app_status={{current_app_filter}}" method="POST" style="display: inline;">
+                                    <button type="submit" class="approve-btn">Approve</button>
+                                </form>
+                                {# Link to reject page - preserves filters #}
+                                <a href="{{ url_for('user.eadmin_reject_app_page', app_id=app._id) }}?app_status={{current_app_filter}}" class="reject-btn button" style="text-decoration: none;">Reject</a>
+                                {% elif app.status == 'approved' and app.user_id_created %}
+                                    User ID: {{ app.user_id_created }} <br> Org ID: {{ app.assigned_organization_id }}
+                                {% elif app.status == 'rejected' and app.rejection_reason %}
+                                    Reason: {{ app.rejection_reason }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6">No registration applications found for this status.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+
+        <section id="logs-section">
+            <h2>User Activity Logs</h2>
+            <form class="filter-form" action="{{ url_for('user.eadmin_dashboard_page') }}" method="GET">
+                {# active_tab 不再需要 #}
+                <label for="log-page">Page:</label>
+                <input type="number" id="log-page" name="log_page" value="{{ current_log_page or 1 }}" min="1" style="width: 70px;">
+                <button type="submit">Go</button>
+            </form>
+            <table>
+                <thead><tr><th>Timestamp</th><th>User Account</th><th>Activity Name</th><th>Details</th></tr></thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log_entry in logs %}
+                        <tr>
+                            <td>{{ log_entry.activityTime.strftime('%Y-%m-%d %H:%M:%S UTC') if log_entry.activityTime else 'N/A' }}</td>
+                            <td>{{ log_entry.userAccount }}</td>
+                            <td>{{ log_entry.activityName }}</td>
+                            <td>{{ log_entry.details }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="4">No user activity logs found.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="pagination">
+                 {% if total_log_pages and total_log_pages > 1 %}
+                    <span>Page {{ current_log_page }} of {{ total_log_pages }}</span>
+                    {% if current_log_page > 1 %}
+                        <a href="{{ url_for('user.eadmin_dashboard_page', log_page=current_log_page - 1) }}">&laquo; Previous</a>
+                    {% endif %}
+                    {% for page_num in range(1, total_log_pages + 1) %}
+                        {% if page_num == current_log_page %}
+                            <strong>{{ page_num }}</strong>
+                        {% elif (page_num <= 2) or (page_num >= total_log_pages - 1) or (current_log_page - 2 <= page_num <= current_log_page + 2) %}
+                             <a href="{{ url_for('user.eadmin_dashboard_page', log_page=page_num) }}">{{ page_num }}</a>
+                        {% elif page_num == 3 and current_log_page > 5 %}
+                            <span>...</span>
+                        {% elif page_num == total_log_pages - 2 and current_log_page < total_log_pages - 4 %}
+                            <span>...</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if current_log_page < total_log_pages %}
+                        <a href="{{ url_for('user.eadmin_dashboard_page', log_page=current_log_page + 1) }}">Next &raquo;</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="policy-section">
+            <h2>Platform Data Sharing Policies</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category.startswith('policy_') %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <h3>Add New Policy</h3>
+            <form action="{{ url_for('user.eadmin_add_policy') }}" method="POST" enctype="multipart/form-data" class="policy-form">
+                <label for="policy_title">Policy Title:</label>
+                <input type="text" id="policy_title" name="policy_title" required>
+
+                <label for="policy_description">Description (Optional):</label>
+                <textarea id="policy_description" name="policy_description"></textarea>
+
+                <label for="policy_file">Policy Document (PDF only):</label>
+                <input type="file" id="policy_file" name="policy_file" accept=".pdf" required>
+
+                <button type="submit">Add Policy</button>
+            </form>
+
+            <hr style="margin: 30px 0;">
+
+            <h3>Existing Policies</h3>
+            <form class="filter-form" action="{{ url_for('user.eadmin_dashboard_page') }}" method="GET">
+                <label for="policy-page">Page:</label>
+                <input type="number" id="policy-page" name="page" value="{{ current_policy_page or 1 }}" min="1" style="width: 70px;">
+                <button type="submit">Go</button>
+            </form>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Filename</th>
+                        <th>Uploaded At</th>
+                        <th>Uploaded By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if platform_policies %}
+                        {% for policy in platform_policies %}
+                        <tr>
+                            <td>{{ policy.title }}</td>
+                            <td>{{ policy.description or 'N/A' }}</td>
+                            <td>
+                                {% if policy.filename %}
+                                <a href="{{ url_for('user.serve_policy_document', filename=policy.filename) }}" target="_blank">{{ policy.original_filename or policy.filename }}</a>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ policy.upload_timestamp.strftime('%Y-%m-%d %H:%M') if policy.upload_timestamp else 'N/A' }}</td>
+                            <td>{{ policy.uploaded_by_email }}</td>
+                            <td class="action-buttons">
+                                <a href="{{ url_for('user.eadmin_update_policy', policy_id=policy._id) }}" class="button edit-btn">Edit</a> {# 示例：指向编辑页面的链接 #}
+                                <form action="{{ url_for('user.eadmin_delete_policy', policy_id=policy._id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this policy? This action cannot be undone.');">
+                                    <button type="submit" class="reject-btn">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6">No platform policies found.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="pagination">
+                {% if total_policy_pages and total_policy_pages > 1 %}
+                     <span>Page {{ current_policy_page }} of {{ total_policy_pages }}</span>
+                    {% if current_policy_page > 1 %}
+                        <a href="{{ url_for('user.eadmin_dashboard_page', page=current_policy_page - 1) }}">&laquo; Previous</a>
+                    {% endif %}
+                     {% for page_num in range(1, total_policy_pages + 1) %}
+                        {% if page_num == current_policy_page %}
+                            <strong>{{ page_num }}</strong>
+                        {% elif (page_num <= 2) or (page_num >= total_policy_pages - 1) or (current_policy_page - 2 <= page_num <= current_policy_page + 2) %}
+                             <a href="{{ url_for('user.eadmin_dashboard_page', page=page_num) }}">{{ page_num }}</a>
+                        {% elif page_num == 3 and current_policy_page > 5 %}
+                            <span>...</span>
+                        {% elif page_num == total_policy_pages - 2 and current_policy_page < total_policy_pages - 4 %}
+                             <span>...</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if current_policy_page < total_policy_pages %}
+                        <a href="{{ url_for('user.eadmin_dashboard_page', page=current_policy_page + 1) }}">Next &raquo;</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</body>
+</html>

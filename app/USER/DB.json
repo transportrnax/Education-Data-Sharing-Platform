@@ -1,0 +1,93 @@
+{
+    "database_name": "EDBA",
+    "collections": [
+      {
+        "name": "users",
+        "description": "Stores user information for all roles (TAdmin, EAdmin, OConvener, etc.).",
+        "example_fields": [
+          "_id (ObjectId or String UUID depending on User.py)",
+          "email (String, indexed, unique)",
+          "username (String)",
+          "user_role (String)",
+          "access_right (Array)",
+          "organization_id (String/ObjectId, optional)",
+          "organization_name (String, optional)",
+          "verification_code (String, temporary)",
+          "code_expires_at (DateTime, temporary)",
+          "created_at (DateTime)",
+          "last_updated_at (DateTime)"
+        ],
+        "indexes": [
+          { "field": "email", "unique": true }
+        ]
+      },
+      {
+        "name": "activity_log",
+        "description": "Stores records of user actions.",
+        "example_fields": [
+          "_id (ObjectId)",
+          "activityTime (DateTime, indexed)",
+          "userAccount (String)",
+          "activityName (String)",
+          "details (String, optional)"
+        ],
+         "indexes": [
+          { "field": "activityTime", "unique": false }
+        ]
+      },
+      {
+        "name": "registration_applications",
+        "description": "Stores O-Convener registration requests.",
+        "example_fields": [
+          "_id (ObjectId)",
+          "org_name (String)",
+          "email (String, indexed)",
+          "proof_document (String - path/filename)",
+          "status (String, indexed)",
+          "submitted_at (DateTime)",
+          "verification_code (String, temporary)",
+          "code_expires_at (DateTime, temporary)",
+          "approved_by (String, optional)",
+          "approved_at (DateTime, optional)",
+          "rejected_by (String, optional)",
+          "rejected_at (DateTime, optional)",
+          "rejection_reason (String, optional)",
+          "user_id_created (ObjectId or String UUID, optional)"
+        ],
+         "indexes": [
+           { "field": "status", "unique": false },
+           { "field": "email", "unique": false }
+        ]
+      },
+      {
+        "name": "user_questions",
+        "description": "Stores help requests from users.",
+        "example_fields": [
+          "_id (ObjectId)",
+          "user_account (String)",
+          "question (String)",
+          "question_time (DateTime)",
+          "status (String, indexed)",
+          "answer (String, optional)",
+          "answered_by (String, optional)",
+          "answered_time (DateTime, optional)"
+        ],
+         "indexes": [
+           { "field": "status", "unique": false }
+        ]
+      },
+      {
+        "name": "organizations",
+        "description": "Stores details about registered organizations.",
+        "example_fields": [
+          "_id (String UUID or ObjectId, depending on OConvener.py)",
+          "name (String)",
+          "convener_user_id (String UUID or ObjectId)",
+          "status (String)",
+          "created_at (DateTime)",
+          "available_services (Object, optional)"
+        ],
+         "indexes": []
+      }
+    ]
+  }

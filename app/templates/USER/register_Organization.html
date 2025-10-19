@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>O-Convener Registration - E-DBA</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 90vh; background-color: #f4f4f4; margin: 0; }
+        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 450px; }
+        h2 { text-align: center; margin-bottom: 25px; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="email"], input[type="text"], input[type="file"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 3px; box-sizing: border-box; }
+        input[type="file"] { padding: 5px; }
+        .input-group { display: flex; align-items: center; gap: 10px; }
+        .input-group input[type="text"] { flex-grow: 1; } /* Code input takes available space */
+        .input-group button { white-space: nowrap; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-submit { width: auto; background-color: #007bff; color: white; font-weight: bold; margin-right: 10px; }
+        .btn-submit:hover { background-color: #0056b3; }
+        .btn-cancel { width: auto; background-color: #6c757d; color: white; }
+        .btn-cancel:hover { background-color: #5a6268;}
+        .btn-send-code { background-color: #5bc0de; color: white; }
+        .btn-send-code:hover { background-color: #31b0d5;}
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;}
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+        .text-center { text-align: center; margin-top: 20px; font-size: 0.9em;}
+        .file-info { font-size: 0.85em; color: #555; margin-top: 5px;}
+        .button-group { margin-top: 20px; display: flex; justify-content: flex-start; gap:10px;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>O-Convener Registration</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category_full, message in messages %}
+                    {% set category = category_full.split('_')[0] if '_' in category_full else category_full %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('user.handle_send_registration_code') }}" method="POST" id="sendCodeForm">
+            <div class="form-group">
+                <label for="org_name_for_code">Organization Name:</label>
+                <input type="text" id="org_name_for_code" name="org_name" placeholder="Enter organization name" 
+                       value="{{ form_data.org_name if form_data else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="email_for_code">Email:</label>
+                <input type="email" id="email_for_code" name="email_for_code" placeholder="Enter your email" 
+                       value="{{ form_data.email_for_code if form_data else '' }}" required>
+            </div>
+            {# "Send Code" is now the primary submit for this small form #}
+            {# No separate Code input field in this form #}
+        </form>
+        <form action="{{ url_for('user.handle_organization_setup_submission') }}" method="POST" enctype="multipart/form-data" id="mainRegisterForm">
+            {# Hidden fields to carry over org_name and email if needed, or rely on session #}
+            <input type="hidden" name="org_name" value="{{ form_data.org_name if form_data else '' }}">
+            <input type="hidden" name="email" value="{{ form_data.email_for_code if form_data else '' }}">
+            
+            <div class="form-group">
+                <label for="code">Verification Code:</label>
+                <div class="input-group">
+                    <input type="text" id="code" name="code" placeholder="Enter received code" 
+                           value="{{ form_data.code if form_data else '' }}" required>
+                    {# "Send Code" button now submits the form above (sendCodeForm) #}
+                    <button type="submit" form="sendCodeForm" class="btn-send-code">Send Code</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="proof_document">Proof Document (PDF):</label>
+                <input type="file" id="proof_document" name="proof_document" required accept=".pdf">
+                <div id="file-name-display" class="file-info">No file chosen</div>
+            </div>
+
+            <div class="button-group">
+                {# Submit button for the main registration form #}
+                <button type="submit" form="mainRegisterForm" class="btn-submit">Submit</button>
+                <a href="{{ url_for('main.index') }}" class="btn-cancel" style="text-decoration: none; text-align:center; line-height:normal; display:inline-block; padding: 10px 15px;">Cancel</a>
+            </div>
+        </form>
+
+        <div class="text-center">
+            Already have an account? <a href="{{ url_for('user.login_page') }}">Login here</a>
+        </div>
+    </div>
+</body>
+</html>

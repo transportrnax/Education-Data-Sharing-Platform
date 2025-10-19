@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ thesis.title }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Author:</strong> {{ thesis.author }}</p>
+            <p><strong>Abstract:</strong> {{ thesis.abstract }}</p>
+            <p><strong>Price:</strong> ${{ thesis.price }}</p>
+            
+            {% if current_user.is_authenticated %}
+                {% if thesis.price > 0 %}
+                    <button class="btn btn-primary" onclick="processPayment('{{ thesis._id }}', '{{ thesis.price }}')">
+                        Download Thesis
+                    </button>
+                {% else %}
+                    <a href="{{ url_for('thesis.download_thesis', thesis_id=thesis._id) }}" class="btn btn-primary">
+                        Download Thesis
+                    </a>
+                {% endif %}
+            {% else %}
+                <p>Please <a href="{{ url_for('auth.login') }}">login</a> to download this thesis.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Amount to pay: $<span id="paymentAmount">0.00</span></p>
+                <form id="paymentForm">
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="transfer">Bank Transfer</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="wechat">WeChat Pay</option>
+                            <option value="alipay">Alipay</option>
+                            <option value="credit_card">Credit Card</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPayment">Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentThesisId = null;
+
+function processPayment(thesisId, amount) {
+    currentThesisId = thesisId;
+    document.getElementById('paymentAmount').textContent = amount;
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    paymentModal.show();
+}
+
+document.getElementById('confirmPayment').addEventListener('click', function() {
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    
+    fetch('/payment/payments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            service_type: 'thesis_sharing',
+            amount: parseFloat(document.getElementById('paymentAmount').textContent),
+            payment_method: paymentMethod,
+            organization_id: '{{ thesis.organization_id }}',
+            description: 'Payment for thesis: {{ thesis.title }}'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            // After successful payment, redirect to download
+            window.location.href = `/thesis/download/${currentThesisId}`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to process payment');
+    });
+});
+</script>
+{% endblock %} 

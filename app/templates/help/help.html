@@ -1,0 +1,163 @@
+{% extends "basic.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="text-center mb-5">
+                <h1 class="display-3 fw-bold">Help Center</h1>
+                <p class="lead text-muted fs-4">Ask your questions and get answers from our support team</p>
+            </div>
+            
+            <!-- Question Submission Form -->
+            <div class="card shadow-lg mb-5">
+                <div class="card-body p-4">
+                    <h3 class="card-title mb-4 text-center">
+                        <i class="fas fa-question-circle text-primary me-2"></i>
+                        Ask a Question
+                    </h3>
+                    <form action="{{ url_for('main.help_page') }}" method="POST">
+                        <div class="form-group mb-4 d-flex justify-content-center">
+                            <textarea class="form-control form-control-lg w-75" name="question" rows="4" required 
+                                    placeholder="Type your question here..." 
+                                    style="resize: none;"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill" style="min-width:220px;">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Question
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- User's Questions -->
+            <h2 class="mb-4 text-center">
+                <i class="fas fa-history text-secondary me-2"></i>
+                Your Questions
+            </h2>
+            {% if questions %}
+                {% for question in questions %}
+                <div class="card shadow-lg mb-4 question-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h4 class="card-title mb-0">
+                                <i class="fas fa-question text-primary me-2"></i>
+                                Question
+                            </h4>
+                            <span class="badge bg-light text-dark fs-6">
+                                <i class="far fa-clock me-1"></i>
+                                {{ question.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </span>
+                        </div>
+                        <p class="card-text question-text fs-5">{{ question.question }}</p>
+                        
+                        {% if question.answer %}
+                        <div class="answer-section mt-4 p-4 bg-light rounded">
+                            <h5 class="mb-3">
+                                <i class="fas fa-reply text-success me-2"></i>
+                                Answer
+                            </h5>
+                            <p class="card-text mb-3 fs-5">{{ question.answer }}</p>
+                            <small class="text-muted fs-6">
+                                <i class="far fa-clock me-1"></i>
+                                Answered on: {{ question.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </small>
+                        </div>
+                        {% else %}
+                        <div class="waiting-section mt-4 p-4 bg-light rounded">
+                            <p class="text-muted mb-0 fs-5 text-center">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                Waiting for answer...
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-4"></i>
+                    <p class="lead text-muted fs-4">You haven't asked any questions yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.question-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.question-card:hover {
+    transform: translateY(-3px);
+}
+
+.question-text {
+    line-height: 1.8;
+}
+
+.answer-section {
+    border-left: 5px solid #28a745;
+}
+
+.waiting-section {
+    border-left: 5px solid #ffc107;
+}
+.form-control {
+    width: 100%;
+    
+}
+.form-control:focus {
+    box-shadow: 0 0 0 0.3rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+.btn-primary {
+    transition: all 0.2s ease-in-out;
+    font-size: 1.1rem;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.badge {
+    font-weight: normal;
+    padding: 0.6em 1em;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.shadow-lg {
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+}
+
+.form-control-lg {
+    font-size: 1.1rem;
+}
+
+/* 添加响应式调整 */
+@media (max-width: 768px) {
+    .display-3 {
+        font-size: 2.5rem;
+    }
+    
+    .fs-4 {
+        font-size: 1.1rem !important;
+    }
+    
+    .fs-5 {
+        font-size: 1rem !important;
+    }
+    .form-control-lg.w-75 {
+        width: 100% !important;
+    }
+}
+</style>
+{% endblock %} 

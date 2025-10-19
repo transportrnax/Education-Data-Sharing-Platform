@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>T-Admin Dashboard - E-DBA</title>
+    <style>
+        body { font-family: sans-serif; padding: 15px; margin: 0; background-color: #f8f9fa; }
+        .dashboard-container { max-width: 1200px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        nav { background-color: #343a40; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; word-wrap: break-word; }
+        th { background-color: #f2f2f2; }
+        .action-buttons button, .form-group button, .filter-form button { margin: 3px; padding: 6px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #eee; }
+        .action-buttons button:hover, .form-group button:hover, .filter-form button:hover { background-color: #ddd; }
+        .approve-btn { background-color: #28a745; color: white; }
+        .reject-btn { background-color: #dc3545; color: white; }
+        .delete-btn { background-color: #dc3545; color: #333; }
+        .edit-btn { background-color: #ffc107; color: #333; }
+        textarea { width: calc(100% - 16px); min-height: 60px; margin-top: 5px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .form-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #fdfdfd; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input[type="email"], .form-group input[type="text"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; }
+        .filter-form { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .filter-form select, .filter-form button { padding: 8px; border-radius: 4px; border: 1px solid #ccc;}
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;}
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <a href="{{ url_for('main.index') }}">Home</a>
+            <span style="color: #f2f2f2;">Welcome, T-Admin {{ session.user_email }}!</span>
+            <a href="{{ url_for('user.logout_page') }}" style="float: right;">Logout</a>
+        </nav>
+
+        <h1>T-Admin Dashboard</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category or 'info' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section id="requests-section">
+            <h2>Help Request Management</h2>
+            <form class="filter-form" action="{{ url_for('user.tadmin_dashboard_page') }}" method="GET">
+                <label for="request-status-filter">Filter Status:</label>
+                <select id="request-status-filter" name="request_status">
+                    <option value="pending" {% if current_request_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="answered" {% if current_request_filter == 'answered' %}selected{% endif %}>Answered</option>
+                    <option value="closed" {% if current_request_filter == 'closed' %}selected{% endif %}>Closed</option>
+                </select>
+                <button type="submit">Load/Filter Requests</button>
+            </form>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Request Time</th>
+                        <th>User Account</th>
+                        <th>Question</th>
+                        <th>Status</th>
+                        <th>Answer / Action</th>
+                        <th>Answered By / Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if help_requests %}
+                        {% for req in help_requests %}
+                        <tr>
+                            <td>{{ req.question_time.strftime('%Y-%m-%d %H:%M:%S UTC') if req.question_time else 'N/A' }}</td>
+                            <td>{{ req.user_account }}</td>
+                            <td>{{ req.question }}</td>
+                            <td>{{ req.status }}</td>
+                            <td>
+                                {% if req.status == 'pending' %}
+                                <form action="{{ url_for('user.tadmin_answer_request', question_id=req._id) }}" method="POST">
+                                    <textarea name="answer_content" placeholder="Enter your answer..." required></textarea><br>
+                                    <button type="submit" class="approve-btn">Submit Answer</button>
+                                </form>
+                                {% else %}
+                                    {{ req.answer or 'N/A' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ req.answered_by or 'N/A' }}
+                                {% if req.answered_time %}<br>{{ req.answered_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6">No help requests found for this status.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+
+        <hr>
+
+        <section id="eadmin-section">
+            <h2>E-Admin Account Management</h2>
+            <div class="form-group">
+                <h3>Add New E-Admin</h3>
+                <form action="{{ url_for('user.tadmin_add_eadmin') }}" method="POST">
+                    <label for="new-eadmin-email">Email:</label>
+                    <input type="email" id="new-eadmin-email" name="email" required placeholder="New E-Admin's email">
+                    <label for="new-eadmin-username">Username (Optional):</label>
+                    <input type="text" id="new-eadmin-username" name="username" placeholder="Optional username">
+                    <button type="submit">Add E-Admin</button>
+                </form>
+            </div>
+
+            <h3>Current E-Admin List <a href="{{ url_for('user.tadmin_dashboard_page', refresh_eadmins='true') }}" class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px; text-decoration: none;">Refresh List</a></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if eadmin_list %}
+                        {% for admin in eadmin_list %}
+                        <tr>
+                            <td>{{ admin.email }}</td>
+                            <td>{{ admin.username }}</td>
+                            <td>{{ admin.user_role }}</td>
+                            <td>{{ admin.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if admin.created_at else 'N/A' }}</td>
+                            <td class="action-buttons">
+                                <form action="{{ url_for('user.tadmin_edit_eadmin_page', eadmin_id=admin._id) }}" method="GET" style="display: inline;">
+                                    <button type="submit" class="edit-btn">Edit</button>
+                                </form>
+                                <form action="{{ url_for('user.tadmin_delete_eadmin', eadmin_id=admin._id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this E-Admin? This action cannot be undone.');">
+                                    <button type="submit" class="delete-btn">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="5">No E-Admin users found.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+</body>
+</html>

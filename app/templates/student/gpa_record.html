@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>GPA Record Submission</h2>
+        </div>
+        <div class="card-body">
+            <form id="gpaForm">
+                <div class="mb-3">
+                    <label for="semester" class="form-label">Semester</label>
+                    <input type="text" class="form-control" id="semester" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="gpa" class="form-label">GPA</label>
+                    <input type="number" class="form-control" id="gpa" step="0.01" min="0" max="4.0" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="transcript" class="form-label">Transcript</label>
+                    <input type="file" class="form-control" id="transcript" accept=".pdf" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Submit GPA Record</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Submission Fee: $<span id="submissionFee">5.00</span></p>
+                <form id="paymentForm">
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="transfer">Bank Transfer</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="wechat">WeChat Pay</option>
+                            <option value="alipay">Alipay</option>
+                            <option value="credit_card">Credit Card</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPayment">Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('gpaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Show payment modal
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    paymentModal.show();
+});
+
+document.getElementById('confirmPayment').addEventListener('click', function() {
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const formData = new FormData();
+    formData.append('semester', document.getElementById('semester').value);
+    formData.append('gpa', document.getElementById('gpa').value);
+    formData.append('transcript', document.getElementById('transcript').files[0]);
+    
+    // First create payment
+    fetch('/payment/payments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            service_type: 'gpa_record',
+            amount: parseFloat(document.getElementById('submissionFee').textContent),
+            payment_method: paymentMethod,
+            description: 'GPA record submission fee'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            // After successful payment, submit GPA record
+            formData.append('payment_id', data.payment_id);
+            return fetch('/student/submit-gpa', {
+                method: 'POST',
+                body: formData
+            });
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert('GPA record submitted successfully');
+            window.location.href = '/student/dashboard';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to process GPA record submission');
+    });
+});
+</script>
+{% endblock %} 

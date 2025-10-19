@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Payment Management</h2>
+    
+    <!-- Bank Account Management Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Bank Account Management</h4>
+        </div>
+        <div class="card-body">
+            <div id="bankAccountsList" class="mb-4">
+                <!-- Bank accounts will be loaded here -->
+            </div>
+            
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBankAccountModal">
+                Add New Bank Account
+            </button>
+        </div>
+    </div>
+
+    <!-- Payment Processing Section -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Payment Processing</h4>
+        </div>
+        <div class="card-body">
+            <form id="paymentForm">
+                <div class="mb-3">
+                    <label for="serviceType" class="form-label">Service Type</label>
+                    <select class="form-select" id="serviceType" required>
+                        <option value="">Select a service</option>
+                        <option value="thesis_sharing">Thesis Sharing</option>
+                        <option value="gpa_record">GPA Record</option>
+                        <option value="student_identity">Student Identity</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="amount" class="form-label">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="amount" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="paymentMethod" class="form-label">Payment Method</label>
+                    <select class="form-select" id="paymentMethod" required>
+                        <option value="transfer">Bank Transfer</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="wechat">WeChat Pay</option>
+                        <option value="alipay">Alipay</option>
+                        <option value="credit_card">Credit Card</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" rows="3"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Process Payment</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Bank Account Modal -->
+<div class="modal fade" id="addBankAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Bank Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bankAccountForm">
+                    <div class="mb-3">
+                        <label for="accountName" class="form-label">Account Name</label>
+                        <input type="text" class="form-control" id="accountName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="accountNumber" class="form-label">Account Number</label>
+                        <input type="text" class="form-control" id="accountNumber" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bankName" class="form-label">Bank Name</label>
+                        <input type="text" class="form-control" id="bankName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bankBranch" class="form-label">Bank Branch</label>
+                        <input type="text" class="form-control" id="bankBranch">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="swiftCode" class="form-label">SWIFT Code</label>
+                        <input type="text" class="form-control" id="swiftCode">
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isDefault">
+                        <label class="form-check-label" for="isDefault">Set as default account</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveBankAccount">Save Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load bank accounts
+    loadBankAccounts();
+    
+    // Handle bank account form submission
+    document.getElementById('saveBankAccount').addEventListener('click', function() {
+        const formData = {
+            account_name: document.getElementById('accountName').value,
+            account_number: document.getElementById('accountNumber').value,
+            bank_name: document.getElementById('bankName').value,
+            bank_branch: document.getElementById('bankBranch').value,
+            swift_code: document.getElementById('swiftCode').value,
+            is_default: document.getElementById('isDefault').checked
+        };
+        
+        fetch('/payment/bank-accounts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                loadBankAccounts();
+                bootstrap.Modal.getInstance(document.getElementById('addBankAccountModal')).hide();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to save bank account');
+        });
+    });
+    
+    // Handle payment form submission
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            service_type: document.getElementById('serviceType').value,
+            amount: document.getElementById('amount').value,
+            payment_method: document.getElementById('paymentMethod').value,
+            description: document.getElementById('description').value
+        };
+        
+        fetch('/payment/payments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Payment processed successfully');
+                window.location.href = '/payment/history';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to process payment');
+        });
+    });
+});
+
+function loadBankAccounts() {
+    fetch('/payment/bank-accounts')
+        .then(response => response.json())
+        .then(accounts => {
+            const accountsList = document.getElementById('bankAccountsList');
+            accountsList.innerHTML = '';
+            
+            accounts.forEach(account => {
+                const accountCard = document.createElement('div');
+                accountCard.className = 'card mb-3';
+                accountCard.innerHTML = `
+                    <div class="card-body">
+                        <h5 class="card-title">${account.account_name}</h5>
+                        <p class="card-text">
+                            <strong>Account Number:</strong> ${account.account_number}<br>
+                            <strong>Bank:</strong> ${account.bank_name}<br>
+                            <strong>Branch:</strong> ${account.bank_branch || 'N/A'}<br>
+                            <strong>SWIFT Code:</strong> ${account.swift_code || 'N/A'}<br>
+                            <strong>Default Account:</strong> ${account.is_default ? 'Yes' : 'No'}
+                        </p>
+                        <button class="btn btn-sm btn-primary me-2" onclick="editBankAccount('${account.account_id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteBankAccount('${account.account_id}')">Delete</button>
+                    </div>
+                `;
+                accountsList.appendChild(accountCard);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load bank accounts');
+        });
+}
+
+function editBankAccount(accountId) {
+    // Implement edit functionality
+}
+
+function deleteBankAccount(accountId) {
+    if (confirm('Are you sure you want to delete this bank account?')) {
+        fetch(`/payment/bank-accounts/${accountId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                loadBankAccounts();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete bank account');
+        });
+    }
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,551 @@
+{% extends "basic.html" %}
+{% block title %}Private Consumer Dashboard{% endblock %}
+
+{% block content %}
+<h1>Private Consumer Services</h1>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 2rem;
+  }
+  .card {
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative;
+  }
+  .bulk-group {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    position: relative;
+  }
+  .bulk-group button.remove-btn {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    background-color: #e53935;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .add-btn, .del-btn {
+    margin-bottom: 1rem;
+    margin-right: 0.5rem;
+    background-color: #43a047;
+    font-size: 0.85rem;
+  }
+  .del-btn {
+    background-color: #f57c00;
+  }
+  input, textarea {
+    margin: 0.25rem 0 1rem;
+    padding: 0.5rem;
+    width: 100%;
+  }
+  button {
+    background-color: #3949ab;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  pre {
+    background: #eee;
+    padding: 1rem;
+    white-space: pre-wrap; /* Ensures lines break and are readable */
+    margin-top: 1rem;
+    font-family: Consolas, "Courier New", monospace; /* Monospaced font for better alignment */
+  }
+  label {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  button.download-btn {
+      margin-left: 1rem;
+      background-color: #3949ab;
+  }
+  .policy-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f1f1;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+  }
+  .policy-card span {
+      flex-grow: 1;
+      font-weight: bold;
+  }
+</style>
+
+<!-- 📜 Policy Files -->
+<section>
+  <h2>📜 Policy Documents</h2>
+  <button onclick="loadPolicies()">View Policies</button>
+  <ul id="policy-list"></ul>
+</section>
+
+<!-- 🔍 Course Search -->
+<section>
+  <h2>🔍 Search Courses</h2>
+  <form id="search-form">
+    <input type="text" name="keyword" placeholder="e.g. AI, Data, Finance" required />
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<!-- 📋 Results -->
+<section>
+  <h2>📘 Course Results</h2>
+  <div id="course-results">No results yet.</div>
+</section>
+
+<!-- 📚 Full Course List -->
+<section>
+  <h2>📚 All Courses</h2>
+  <button onclick="loadAllCourses()">View All Courses</button>
+  <div id="all-courses"></div>
+</section>
+
+<!-- 📄 Thesis Search -->
+<section>
+  <h2>📄 Thesis Metadata</h2>
+  <form id="thesis-form">
+    <input type="text" name="title" placeholder="Enter thesis title" required />
+    <button type="submit">Get Info</button>
+  </form>
+  <div id="thesis-info">No thesis queried yet.</div>
+</section>
+
+<!-- 📑 Full Thesis List -->
+<section>
+  <h2>📑 All Theses</h2>
+  <button onclick="loadAllTheses()">View All Theses</button>
+  <div id="all-theses"></div>
+</section>
+
+<section>
+  <h2>💾 Download Thesis</h2>
+  <form id="download-form">
+    <input type="text" name="title" placeholder="Thesis title" required />
+    <input type="text" name="email" placeholder="Your email" required />
+    <input type="password" name="password" placeholder="Bank password" required />
+    <button type="submit">Download</button>
+  </form>
+  <div id="balance-status"></div>
+  <div id="quota-status"></div>
+</section>
+
+<section>
+  <h2>📚 Services</h2>
+  <div id="services-container">Loading services...</div>
+</section>
+
+
+<script>
+const email = localStorage.getItem("user_email") || "";
+
+fetch("/api/consumer/services/uic", {
+  headers: {
+    "X-User-Email": email
+  }
+})
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const email = localStorage.getItem("user_email");
+  if (!email) {
+    alert("Not logged in!");
+    return;
+  }
+
+  // 显示用户信息
+  const username = email.split("@")[0].replace(/[_\.]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  const userDisplay = document.createElement("p");
+  userDisplay.innerHTML = `<b>👤 Logged in as:</b> ${username} (<i>${email}</i>)`;
+  document.querySelector("h1").after(userDisplay);
+
+  const container = document.getElementById("services-container");
+
+  try {
+    const res = await fetch("/api/consumer/services/available", {
+      headers: { "X-User-Email": email }
+    });
+    const services = await res.json();
+    if (!Array.isArray(services) || services.length === 0) {
+      container.innerHTML = "<p>No available services.</p>";
+      return;
+    }
+
+    container.innerHTML = "";
+    services.forEach(service => renderServiceCard(container, service, email));
+  } catch (err) {
+    container.innerHTML = `<p style="color:red;">Failed to load services: ${err}</p>`;
+  }
+});
+
+function renderServiceCard(container, service, email) {
+  const sid = service.service_name;
+  const config = service.config;
+  const fields = Object.entries(config.input || {});
+
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <h2>${sid}</h2>
+    <p><b>Organization:</b> ${service.organization}</p>
+  `;
+
+
+  const form = document.createElement("form");
+  form.id = `form-${sid}`;
+  const inputDiv = document.createElement("div");
+  inputDiv.id = `input-section-${sid}`;
+  form.appendChild(inputDiv);
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.textContent = "+ Add";
+  addBtn.onclick = () => addInputGroup(inputDiv, fields);
+  form.appendChild(addBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.textContent = "- Delete";
+  delBtn.className = "remove-btn";
+  delBtn.onclick = () => {
+    const blocks = inputDiv.querySelectorAll(".bulk-group");
+    if (blocks.length > 0) blocks[blocks.length - 1].remove();
+  };
+  form.appendChild(delBtn);
+
+  addInputGroup(inputDiv, fields); // 初始一组输入
+
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "submit";
+  sendBtn.textContent = "Send";
+  form.appendChild(sendBtn);
+
+  const response = document.createElement("pre");
+  response.id = `response-${sid}`;
+  form.appendChild(response);
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const payload = [];
+    const blocks = form.querySelectorAll(".bulk-group");
+    blocks.forEach(group => {
+      const obj = {};
+      group.querySelectorAll("input").forEach(input => {
+        obj[input.name] = input.value;
+      });
+      payload.push(obj);
+    });
+
+    response.textContent = "Sending...";
+    try {
+      const res = await fetch(`/api/consumer/service/query/uic/${sid}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": email
+        },
+        body: JSON.stringify({ input: payload })
+      });
+
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        response.textContent = formatResponse(json);
+      } catch {
+        response.textContent = text;
+      }
+    } catch (err) {
+      response.textContent = "Request failed:\n" + err;
+    }
+  });
+
+  card.appendChild(form);
+  container.appendChild(card);
+}
+
+function addInputGroup(container, fields) {
+  const group = document.createElement("div");
+  group.className = "bulk-group";
+  group.innerHTML = `<button type="button" class="remove-btn" onclick="this.parentElement.remove()">X</button>` +
+    fields.map(([key, type]) =>
+      `<label>${key}:</label><input name="${key}" placeholder="${type}" required />`).join('');
+  container.appendChild(group);
+}
+
+function formatResponse(json) {
+  if (Array.isArray(json)) {
+    return json.map((item, i) => `Result ${i + 1}:\n${Object.entries(item).map(([k,v]) => `  ${k}: ${v}`).join('\n')}`).join('\n\n');
+  } else if (typeof json === 'object') {
+    return Object.entries(json).map(([k,v]) => `  ${k}: ${v}`).join('\n');
+  } else {
+    return String(json);
+  }
+}
+
+
+function attachSubmitListener(sid) {
+  const form = document.getElementById(`form-${sid}`);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const resultEl = document.getElementById(`response-${sid}`);
+
+    const containers = document.querySelectorAll(`#input-section-${sid} .bulk-group`);
+    const payload = [];
+    containers.forEach(group => {
+      const obj = {};
+      group.querySelectorAll("input").forEach(input => {
+        obj[input.name] = input.value;
+      });
+      payload.push(obj);
+    });
+
+    resultEl.textContent = "Sending...";
+    try {
+      const res = await fetch(`/api/consumer/service/query/uic/${sid}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": email
+        },
+        body: JSON.stringify({ input: payload.length === 1 ? payload[0] : payload })
+      });
+
+      const text = await res.text();
+      resultEl.textContent = ""; // Clear previous/sending message
+
+      try {
+        const jsonResponse = JSON.parse(text);
+        let formattedOutput = "";
+
+        if (Array.isArray(jsonResponse)) {
+          if (jsonResponse.length === 0) {
+            formattedOutput = "Received an empty list of results.";
+          } else {
+            jsonResponse.forEach((item, index) => {
+              formattedOutput += `Result ${index + 1}:\n`;
+              if (typeof item === 'object' && item !== null) {
+                for (const key in item) {
+                  if (Object.hasOwnProperty.call(item, key)) {
+                    const value = item[key];
+                    if (typeof value === 'object' && value !== null) {
+                      // 对于嵌套对象，为了可读性，仍然使用JSON.stringify，但可以简化
+                      formattedOutput += `  ${key}: ${JSON.stringify(value)}\n`;
+                    } else {
+                      formattedOutput += `  ${key}: ${value}\n`;
+                    }
+                  }
+                }
+              } else {
+                // 如果项是原始类型（例如字符串、数字）
+                formattedOutput += `  ${item}\n`;
+              }
+              if (index < jsonResponse.length - 1) {
+                formattedOutput += "\n"; // 在多个结果之间添加空行
+              }
+            });
+          }
+        } else if (typeof jsonResponse === 'object' && jsonResponse !== null) {
+          formattedOutput = "Result:\n";
+          for (const key in jsonResponse) {
+            if (Object.hasOwnProperty.call(jsonResponse, key)) {
+              const value = jsonResponse[key];
+              if (typeof value === 'object' && value !== null) {
+                formattedOutput += `  ${key}: ${JSON.stringify(value)}\n`;
+              } else {
+                formattedOutput += `  ${key}: ${value}\n`;
+              }
+            }
+          }
+        } else {
+          // 如果是其他有效的JSON类型（例如单个字符串、数字、布尔值）
+          formattedOutput = `Result: ${jsonResponse}`;
+        }
+        resultEl.textContent = formattedOutput.trim();
+
+      } catch (parseError) {
+        // 如果解析JSON失败，则假定为纯文本
+        if (text.trim() === "") {
+          resultEl.textContent = "Received an empty response.";
+        } else {
+          resultEl.textContent = text; // 直接显示原始文本
+        }
+      }
+    } catch (err) {
+      resultEl.textContent = "Request failed:\n" + err;
+    }
+  });
+}
+
+function addUserBlock(inputDivElement, fields) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "bulk-group";
+  wrapper.innerHTML = `<button type="button" class="remove-btn" onclick="this.parentElement.remove()">X</button>` +
+    fields.map(([key, type]) => `<label>${key}:</label><input name="${key}" placeholder="${type}" required />`).join('');
+  inputDivElement.appendChild(wrapper);
+}
+
+  async function refreshQuota(email) {
+    const res = await fetch(`/api/public/quota?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    document.getElementById("quota-status").innerHTML =
+      `<p><b>Quota:</b> ${data.used_today}/${data.max_daily} used</p>`;
+  }
+
+  async function refreshBalance(email, password, bank) {
+    const res = await fetch("/api/public/bank/balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, bank })
+    });
+    const data = await res.json();
+    if (data.balance !== undefined) {
+      document.getElementById("balance-status").innerHTML = `<p><b>Balance:</b> $${data.balance.toFixed(2)}</p>`;
+    } else {
+      document.getElementById("balance-status").innerHTML = `<p style='color:red;'>${data.error || 'Error fetching balance'}</p>`;
+    }
+  }
+
+  async function loadAllCourses() {
+    const res = await fetch("/api/public/courses/all");
+    const list = await res.json();
+    document.getElementById("all-courses").innerHTML = list.map(c => `
+      <div class="card">
+        <b>${c.title}</b> (${c.units})<br/>
+        ${c.description}
+      </div>`).join('');
+  }
+
+  async function loadAllTheses() {
+    const res = await fetch("/api/public/theses");
+    const list = await res.json();
+    document.getElementById("all-theses").innerHTML = list.map(t => `
+      <div class="card">
+        <b>${t.title}</b><br/>
+        ${t.abstract}<br/>
+        <b>Price:</b> $${t.price || 0}
+      </div>`).join('');
+  }
+  window.loadAllCourses = loadAllCourses;
+  window.loadAllTheses = loadAllTheses;
+
+
+  document.getElementById("search-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const keyword = e.target.keyword.value.trim();
+    const res = await fetch(`/api/public/courses?keyword=${encodeURIComponent(keyword)}`);
+    const courses = await res.json();
+
+    const container = document.getElementById("course-results");
+    if (!courses.length) {
+      container.innerHTML = "<i>No courses found.</i>";
+      return;
+    }
+
+    container.innerHTML = courses.map(c => `
+      <div class="card">
+        <b>${c.title}</b> (${c.units})<br/>
+        ${c.description}
+      </div>
+    `).join('');
+  });
+
+  document.getElementById("thesis-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = e.target.title.value.trim();
+    const res = await fetch(`/api/public/thesis/metadata?title=${encodeURIComponent(title)}`);
+    const result = await res.json();
+
+    const info = document.getElementById("thesis-info");
+    if (result.error || result.message === "NOT_FOUND") {
+      info.innerHTML = `<i>Thesis not found.</i>`;
+      return;
+    }
+
+    info.innerHTML = `
+      <div class="card">
+        <b>${result.title}</b><br/>
+        <p><b>Abstract:</b> ${result.abstract}</p>
+        <p><b>Price:</b> $${result.price}</p>
+      </div>
+    `;
+  });
+
+  document.getElementById("download-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      title: form.title.value.trim(),
+      email: form.email.value.trim(),
+      password: form.password.value,
+    };
+
+    await refreshQuota(payload.email);
+    await refreshBalance(payload.email, payload.password, payload.bank);
+
+    try {
+      const res = await fetch("/api/public/thesis/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok && res.status === 200) throw new Error("Download failed");
+
+      if (res.headers.get("Content-Type") === "application/json") {
+        const err = await res.json();
+        alert("Download error: " + (err.error || JSON.stringify(err)));
+        return;
+      }
+
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = window.URL.createObjectURL(blob);
+      a.download = payload.title.replace(/\s+/g, '_') + ".pdf";
+      a.click();
+
+      // ✅ Refresh post-download
+      await refreshQuota(payload.email);
+      await refreshBalance(payload.email, payload.password, payload.bank);
+
+    } catch (err) {
+      alert("Download error: " + err.message);
+    }
+  });
+
+  async function loadPolicies() {
+      const res = await fetch("/api/consumer/policies");
+      const list = await res.json();
+      const container = document.getElementById("policy-list");
+
+      if (!list.length) {
+        container.innerHTML = "<p>No policies available.</p>";
+        return;
+      }
+
+      container.innerHTML = list.map(file => `
+        <div class="policy-card">
+          <span>${file}</span>
+          <div>
+            <a href="/api/consumer/policies/download/${encodeURIComponent(file)}" download><button class="download-btn">Download</button></a>
+          </div>
+        </div>
+      `).join('');
+  }
+
+</script>
+{% endblock %}

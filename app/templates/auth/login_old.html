@@ -1,0 +1,23 @@
+{% extends 'basic.html' %}
+
+{% block title %}Login - E-DBA{% endblock %}
+
+{% block content %}
+<h2>Login</h2>
+<form method="post" action="{{ url_for('auth.login') }}">
+  <table>
+    <tr>
+      <td><label for="email">Email: </label></td>
+      <td><input type="email" id="email" name="email" required></td>
+    </tr>
+    <tr>
+      <td><label for="code">Verification code: </label></td>
+      <td><input type="text" id="code" name="code"><br></td>
+    </tr>
+    <tr><td colspan="2" style="text-align: center">
+        <button type="submit">Login</button>
+        <button type="button" onclick="location.href = '{{ url_for('workspace.register_org') }}'">Register</button>
+    </td></tr>
+  </table>
+</form>
+{% endblock %}

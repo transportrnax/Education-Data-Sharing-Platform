@@ -1,0 +1,326 @@
+{% extends "basic.html" %}
+{% block title %}Public Course Browser{% endblock %}
+
+{% block content %}
+<h1>📖 Browse Open Courses</h1>
+
+<style>
+  body { font-family: Arial, sans-serif; }
+  h2 { color: #1a237e; }
+  form, .card {
+    background: #f5f5f5;
+    padding: 1em;
+    border-radius: 8px;
+    margin-bottom: 1.5em;
+  }
+  input, select {
+    width: 100%;
+    margin-bottom: 0.75em;
+    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  button {
+    background-color: #3949ab;
+    color: white;
+    border: none;
+    padding: 0.6em 1em;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #303f9f;
+  }
+  .card {
+    border: 1px solid #ddd;
+    padding: 1em;
+    border-radius: 6px;
+    margin-bottom: 1em;
+    background-color: #fafafa;
+  }
+  .policy-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f1f1;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+  }
+  .policy-card span {
+    flex-grow: 1;
+    font-weight: bold;
+  }
+  button.download-btn {
+    margin-left: 1rem;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button.open-btn {
+    margin-left: 0.5rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+</style>
+
+<!-- 📜 Policy Files -->
+<section>
+  <h2>📜 Policy Documents</h2>
+  <button onclick="loadPolicies()">View Policies</button>
+  <div id="policy-list"></div>
+</section>
+
+
+<!-- 🔍 Course Search -->
+<section>
+  <h2>🔍 Search Courses</h2>
+  <form id="search-form">
+    <input type="text" name="keyword" placeholder="e.g. AI, Data, Finance" required />
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<!-- 📋 Results -->
+<section>
+  <h2>📘 Course Results</h2>
+  <div id="course-results">No results yet.</div>
+</section>
+
+<!-- 📚 Full Course List -->
+<section>
+  <h2>📚 All Courses</h2>
+  <button onclick="loadAllCourses()">View All Courses</button>
+  <div id="all-courses"></div>
+</section>
+
+<!-- 📄 Thesis Search -->
+<section>
+  <h2>📄 Thesis Metadata</h2>
+  <form id="thesis-form">
+    <input type="text" name="title" placeholder="Enter thesis title" required />
+    <button type="submit">Get Info</button>
+  </form>
+  <div id="thesis-info">No thesis queried yet.</div>
+</section>
+
+<!-- 📑 Full Thesis List -->
+<section>
+  <h2>📑 All Theses</h2>
+  <button onclick="loadAllTheses()">View All Theses</button>
+  <div id="all-theses"></div>
+</section>
+
+<section>
+  <h2>💾 Download Thesis</h2>
+  <form id="download-form">
+    <input type="text" name="title" placeholder="Thesis title" required />
+    <input type="text" name="email" placeholder="Your email" required />
+    <input type="password" name="password" placeholder="Bank password" required />
+    <button type="submit">Download</button>
+  </form>
+  <div id="balance-status"></div>
+  <div id="quota-status"></div>
+</section>
+
+<script type="module">
+  const email = localStorage.getItem("user_email") || "";
+
+  fetch("/api/public/services/uic", {
+    headers: {
+      "X-User-Email": email
+    }
+  })
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const email = localStorage.getItem("user_email");
+    if (!email) {
+      alert("Not logged in!");
+      return;
+    }
+
+    // 显示用户信息
+    const username = email.split("@")[0].replace(/[_\.]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    const userDisplay = document.createElement("p");
+    userDisplay.innerHTML = `<b>👤 Logged in as:</b> ${username} (<i>${email}</i>)`;
+    document.querySelector("h1").after(userDisplay);
+
+    const container = document.getElementById("services-container");
+
+    try {
+      const res = await fetch("/api/public/services/available", {
+        headers: { "X-User-Email": email }
+      });
+      const services = await res.json();
+      if (!Array.isArray(services) || services.length === 0) {
+        container.innerHTML = "<p>No available services.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      services.forEach(service => renderServiceCard(container, service, email));
+    } catch (err) {
+      container.innerHTML = `<p style="color:red;">Failed to load services: ${err}</p>`;
+    }
+  });
+
+  async function refreshQuota(email) {
+    const res = await fetch(`/api/public/quota?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    document.getElementById("quota-status").innerHTML =
+      `<p><b>Quota:</b> ${data.used_today}/${data.max_daily} used</p>`;
+  }
+
+  async function refreshBalance(email, password, bank) {
+    const res = await fetch("/api/public/bank/balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, bank })
+    });
+    const data = await res.json();
+    if (data.balance !== undefined) {
+      document.getElementById("balance-status").innerHTML = `<p><b>Balance:</b> $${data.balance.toFixed(2)}</p>`;
+    } else {
+      document.getElementById("balance-status").innerHTML = `<p style='color:red;'>${data.error || 'Error fetching balance'}</p>`;
+    }
+  }
+
+  async function loadAllCourses() {
+    const res = await fetch("/api/public/courses/all");
+    const list = await res.json();
+    document.getElementById("all-courses").innerHTML = list.map(c => `
+      <div class="card">
+        <b>${c.title}</b> (${c.units})<br/>
+        ${c.description}
+      </div>`).join('');
+  }
+
+  async function loadAllTheses() {
+    const res = await fetch("/api/public/theses");
+    const list = await res.json();
+    document.getElementById("all-theses").innerHTML = list.map(t => `
+      <div class="card">
+        <b>${t.title}</b><br/>
+        ${t.abstract}<br/>
+        <b>Price:</b> $${t.price || 0}
+      </div>`).join('');
+  }
+  window.loadAllCourses = loadAllCourses;
+  window.loadAllTheses = loadAllTheses;
+
+
+  document.getElementById("search-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const keyword = e.target.keyword.value.trim();
+    const res = await fetch(`/api/public/courses?keyword=${encodeURIComponent(keyword)}`);
+    const courses = await res.json();
+
+    const container = document.getElementById("course-results");
+    if (!courses.length) {
+      container.innerHTML = "<i>No courses found.</i>";
+      return;
+    }
+
+    container.innerHTML = courses.map(c => `
+      <div class="card">
+        <b>${c.title}</b> (${c.units})<br/>
+        ${c.description}
+      </div>
+    `).join('');
+  });
+
+  document.getElementById("thesis-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = e.target.title.value.trim();
+    const res = await fetch(`/api/public/thesis/metadata?title=${encodeURIComponent(title)}`);
+    const result = await res.json();
+
+    const info = document.getElementById("thesis-info");
+    if (result.error || result.message === "NOT_FOUND") {
+      info.innerHTML = `<i>Thesis not found.</i>`;
+      return;
+    }
+
+    info.innerHTML = `
+      <div class="card">
+        <b>${result.title}</b><br/>
+        <p><b>Abstract:</b> ${result.abstract}</p>
+        <p><b>Price:</b> $${result.price}</p>
+      </div>
+    `;
+  });
+
+  document.getElementById("download-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      title: form.title.value.trim(),
+      email: form.email.value.trim(),
+      password: form.password.value,
+    };
+
+    await refreshQuota(payload.email);
+    await refreshBalance(payload.email, payload.password, payload.bank);
+
+    try {
+      const res = await fetch("/api/public/thesis/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok && res.status === 200) throw new Error("Download failed");
+
+      if (res.headers.get("Content-Type") === "application/json") {
+        const err = await res.json();
+        alert("Download error: " + (err.error || JSON.stringify(err)));
+        return;
+      }
+
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = window.URL.createObjectURL(blob);
+      a.download = payload.title.replace(/\s+/g, '_') + ".pdf";
+      a.click();
+
+      // ✅ Refresh post-download
+      await refreshQuota(payload.email);
+      await refreshBalance(payload.email, payload.password, payload.bank);
+
+    } catch (err) {
+      alert("Download error: " + err.message);
+    }
+  });
+
+  async function loadPolicies() {
+    const res = await fetch("/api/public/policies"); // 路径根据 public routes 设置
+    const list = await res.json();
+    const container = document.getElementById("policy-list");
+
+    if (!list.length) {
+      container.innerHTML = "<p>No policies available.</p>";
+      return;
+    }
+
+    container.innerHTML = list.map(file => `
+      <div class="policy-card">
+        <span>${file}</span>
+        <div>
+          <a href="/api/public/policies/download/${encodeURIComponent(file)}" download>
+            <button class="download-btn">Download</button>
+          </a>
+        </div>
+      </div>
+    `).join('');
+  }
+  window.loadPolicies = loadPolicies;
+</script>
+{% endblock %}

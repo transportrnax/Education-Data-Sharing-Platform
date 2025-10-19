@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>T-Admin Dashboard - E-DBA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tadmin_style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <a href="{{ url_for('main.index') }}">Home</a>
+            <span style="color: #f2f2f2;">Welcome, T-Admin {{ current_user.username if current_user and current_user.is_authenticated else 'Guest' }}!</span>
+            <a href="{{ url_for('auth.logout') }}" style="float: right;">Logout</a>
+        </nav>
+
+        <h1>T-Admin Dashboard</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'info' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section id="requests-section">
+            <h2>Help Request Management</h2>
+            <div class="help-requests" style="margin-bottom: 20px;">
+                 {# 假设 UserQuestion 是从路由传递过来的 #}
+                <form class="filter-form" action="{{ url_for('admin.tadmin_dashboard_page') }}" method="GET">
+                    <label for="request-status-filter">Filter Help Requests:</label>
+                    <select id="request-status-filter" name="request_status">
+                        <option value="{{ UserQuestion.PENDING }}" {% if current_request_filter == UserQuestion.PENDING %}selected{% endif %}>Pending</option>
+                        <option value="{{ UserQuestion.ANSWERED }}" {% if current_request_filter == UserQuestion.ANSWERED %}selected{% endif %}>Answered</option>
+                        {# Add other statuses if needed #}
+                    </select>
+                    <button type="submit" class="btn btn-secondary">Filter</button>
+                </form>
+                {% if help_requests %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Request Time</th>
+                            <th>User Account</th>
+                            <th>Question</th>
+                            <th>Status</th>
+                            <th>Answer / Action</th>
+                            <th>Answered By / Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in help_requests %}
+                        <tr>
+                            <td>{{ req.question_time.strftime('%Y-%m-%d %H:%M UTC') if req.question_time else 'N/A' }}</td>
+                            <td>{{ req.user_account }}</td>
+                            <td>{{ req.question }}</td>
+                            <td>{{ req.status }}</td>
+                            <td>
+                                {% if req.status == UserQuestion.PENDING %}
+                                <form action="{{ url_for('main.answer_question', help_id=req._id|string) }}?request_status={{current_request_filter}}" method="POST">
+                                    <button type="submit" class="btn btn-primary">Answer</button>
+                                </form>
+                                {% else %}
+                                    {{ req.answer or 'N/A' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ req.answered_by or 'N/A' }}
+                                {% if req.answered_time %}<br><small>{{ req.answered_time.strftime('%Y-%m-%d %H:%M UTC') }}</small>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>No help requests found for the selected status.</p>
+                {% endif %}
+            </div>
+        </section>
+        <hr>
+        <section id="eadmin-section">
+            <h2>Admin User Management (E-Admins & Senior E-Admins)</h2>
+            <div class="form-group">
+                <h3>Add New Admin User</h3>
+                <form action="{{ url_for('admin.tadmin_add_admin_user_route') }}" method="POST">
+                    <label for="new-admin-email">Email:</label>
+                    <input type="email" id="new-admin-email" name="email" required placeholder="New Admin's email">
+
+                    <label for="new-admin-username">Username:</label>
+                    <input type="text" id="new-admin-username" name="username" required placeholder="Admin's username">
+
+                    <label for="admin-type">Admin Type:</label>
+                    <select id="admin-type" name="admin_type" required>
+                        <option value="">-- Select Type --</option>
+                        {# User 类需要从路由传递到模板 #}
+                        <option value="{{ User.Roles.E_ADMIN.value }}">E-Admin</option>
+                        <option value="{{ User.Roles.SENIOR_EADMIN.value }}">Senior E-Admin</option>
+                    </select>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Add Admin User</button>
+                </form>
+            </div>
+
+            <h3>Current Admin User List <a href="{{ url_for('admin.tadmin_dashboard_page', refresh_eadmins='true') }}" class="btn btn-primary btn-sm" style="text-decoration: none;">Refresh List</a></h3>
+            <table>
+                <thead>
+                    <tr><th>Email</th><th>Username</th><th>Role</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {# eadmin_list 现在包含 EAdmin 和 SeniorEAdmin #}
+                    {% if eadmin_list %}
+                        {% for admin_user_item in eadmin_list %}
+                        <tr>
+                            <td>{{ admin_user_item.email }}</td>
+                            <td>{{ admin_user_item.username }}</td>
+                            <td>{{ admin_user_item.role.name | replace('_', ' ') | title }}</td> {# 显示角色名称 #}
+                            <td class="action-buttons">
+                                {# 编辑按钮打开模态框，模态框的表单 action 指向通用编辑路由 #}
+                                <button type="button" class="btn edit-btn"
+                                        data-admin-id="{{ admin_user_item.user_id }}"
+                                        data-admin-email="{{ admin_user_item.email }}"
+                                        data-admin-username="{{ admin_user_item.username }}"
+                                        data-admin-role-value="{{ admin_user_item.role.value }}">Edit</button>
+                                {# 删除表单指向通用删除路由 #}
+                                <form action="{{ url_for('admin.tadmin_delete_admin_user_route', admin_user_id=admin_user_item.user_id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete admin user \'{{ admin_user_item.email }}\'? This action cannot be undone.');">
+                                    <button type="submit" class="btn delete-btn">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="4">No E-Admin or Senior E-Admin users found.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <div id="editAdminModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Admin User Account</h2>
+                <span class="close-btn" id="closeEditModalBtn">&times;</span>
+            </div>
+            <form id="editAdminForm" method="POST"> {# Action will be set by JS #}
+                <div class="modal-form-group">
+                    <label for="edit-email">Email Address:</label>
+                    <input type="email" id="edit-email" name="email" required placeholder="Admin's email address">
+                    <div id="original-email-info" class="current-info-modal"></div>
+                </div>
+                <div class="modal-form-group">
+                    <label for="edit-username">Username:</label>
+                    <input type="text" id="edit-username" name="username" required placeholder="Admin's username">
+                     <div id="original-username-info" class="current-info-modal"></div>
+                </div>
+                <div class="modal-form-group">
+                    <label for="edit-admin-type">Admin Type:</label>
+                    <select id="edit-admin-type" name="admin_type_edit" required>
+                        <option value="{{ User.Roles.E_ADMIN.value }}">E-Admin</option>
+                        <option value="{{ User.Roles.SENIOR_EADMIN.value }}">Senior E-Admin</option>
+                    </select>
+                    <div id="original-role-info" class="current-info-modal"></div>
+                </div>
+                <div class="modal-button-group">
+                    <button type="button" id="cancelEditBtn" class="btn btn-secondary modal-btn-cancel">Cancel</button>
+                    <button type="submit" class="btn modal-btn-save btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('editAdminModal'); // Updated ID
+    const closeBtn = modal.querySelector('#closeEditModalBtn'); // Updated ID
+    const cancelEditBtn = modal.querySelector('#cancelEditBtn');
+    const editAdminForm = document.getElementById('editAdminForm'); // Updated ID
+    const editButtons = document.querySelectorAll('button.edit-btn');
+
+    editButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const adminId = this.dataset.adminId;
+            const adminEmail = this.dataset.adminEmail;
+            const adminUsername = this.dataset.adminUsername;
+            const adminRoleValue = this.dataset.adminRoleValue;
+
+            if (!adminId) {
+                console.error("Admin ID is missing from button data attribute.");
+                alert("Error: Could not retrieve Admin ID.");
+                return;
+            }
+
+            modal.querySelector('#edit-email').value = adminEmail;
+            modal.querySelector('#edit-username').value = adminUsername;
+            modal.querySelector('#edit-admin-type').value = adminRoleValue; // Set select value
+
+            modal.querySelector('#original-email-info').textContent = `Current Email: ${adminEmail}`;
+            modal.querySelector('#original-username-info').textContent = `Current Username: ${adminUsername}`;
+            const roleName = adminRoleValue === "{{ User.Roles.E_ADMIN.value }}" ? "E-Admin" : (adminRoleValue === "{{ User.Roles.SENIOR_EADMIN.value }}" ? "Senior E-Admin" : "Unknown");
+            modal.querySelector('#original-role-info').textContent = `Current Role: ${roleName}`;
+
+
+            // 修改 action URL 以包含 admin_user_id
+            const actionUrlTemplate = "{{ url_for('admin.tadmin_edit_admin_user_page', eadmin_id='ADMIN_ID_PLACEHOLDER') }}";
+            editAdminForm.action = actionUrlTemplate.replace('ADMIN_ID_PLACEHOLDER', adminId);
+
+            modal.style.display = 'block';
+        });
+    });
+
+    function closeModal() {
+        modal.style.display = 'none';
+        editAdminForm.reset();
+        modal.querySelector('#original-email-info').textContent = '';
+        modal.querySelector('#original-username-info').textContent = '';
+        modal.querySelector('#original-role-info').textContent = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelEditBtn.addEventListener('click', closeModal);
+    window.addEventListener('click', function (event) {
+        if (event.target == modal) {
+            closeModal();
+        }
+    });
+
+    editAdminForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        const actionUrl = this.action;
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // 标记为 AJAX 请求
+            }
+        })
+        .then(response => response.json()) // 假设后端总是返回 JSON
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                // alert(data.message); // 可以用 flash message 替代
+                window.location.reload(); // 重新加载页面以显示更新
+            } else {
+                alert('Update failed: ' + (data.message || 'An unknown error occurred.'));
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting edit form:', error);
+            alert('An error occurred while submitting the form. Please check console.');
+        });
+    });
+});
+</script>
+</body>
+</html>
